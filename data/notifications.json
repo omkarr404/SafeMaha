@@ -1,0 +1,77 @@
+[
+  {
+    "id": "notif-1780717172194-669",
+    "complaintId": "MHFDA-2026-000103",
+    "mobile": "9999999999",
+    "title": {
+      "en": "Action Taken",
+      "mr": "कारवाई केली"
+    },
+    "description": {
+      "en": "Legal warnings, compliance notices or recall directives issued for complaint MHFDA-2026-000103.",
+      "mr": "तक्रार MHFDA-2026-000103 संदर्भात कायदेशीर नोटीस किंवा निर्देश जारी करण्यात आले आहेत."
+    },
+    "date": "2026-06-06T03:39:32.194Z",
+    "read": false
+  },
+  {
+    "id": "notif-1780717169404-28",
+    "complaintId": "MHFDA-2026-000103",
+    "mobile": "9999999999",
+    "title": {
+      "en": "Officer Assigned",
+      "mr": "अधिकारी नियुक्त"
+    },
+    "description": {
+      "en": "An FDA Officer has been assigned to inspect and review your complaint MHFDA-2026-000103.",
+      "mr": "तुमच्या तक्रार MHFDA-2026-000103 च्या तपासणी आणि पुनरावलोकनासाठी अन्न व औषध सुरक्षा अधिकारी नियुक्त केले आहेत."
+    },
+    "date": "2026-06-06T03:39:29.404Z",
+    "read": false
+  },
+  {
+    "id": "notif-1780717146160-16",
+    "complaintId": "MHFDA-2026-000103",
+    "mobile": "9999999999",
+    "title": {
+      "en": "Complaint Submitted Successfully",
+      "mr": "तक्रार यशस्वीरित्या नोंदवली"
+    },
+    "description": {
+      "en": "Your complaint MHFDA-2026-000103 has been successfully logged and is awaiting review.",
+      "mr": "तुमची तक्रार MHFDA-2026-000103 यशस्वीरित्या नोंदवली गेली आहे आणि पुनरावलोकनाची प्रतीक्षा आहे."
+    },
+    "date": "2026-06-06T03:39:06.160Z",
+    "read": false
+  },
+  {
+    "id": "notif-1780717146152-267",
+    "complaintId": "MHFDA-2026-000102",
+    "mobile": "9876543210",
+    "title": {
+      "en": "Officer Assigned",
+      "mr": "अधिकारी नियुक्त"
+    },
+    "description": {
+      "en": "An FDA Officer has been assigned to inspect and review your complaint MHFDA-2026-000102.",
+      "mr": "तुमच्या तक्रार MHFDA-2026-000102 च्या तपासणी आणि पुनरावलोकनासाठी अन्न व औषध सुरक्षा अधिकारी नियुक्त केले आहेत."
+    },
+    "date": "2026-06-06T03:39:06.152Z",
+    "read": false
+  },
+  {
+    "id": "notif-1780717146140-250",
+    "complaintId": "MHFDA-2026-000101",
+    "mobile": "9876543210",
+    "title": {
+      "en": "Investigation Started",
+      "mr": "तपास सुरू"
+    },
+    "description": {
+      "en": "Officer is investigating the incident details for complaint MHFDA-2026-000101.",
+      "mr": "अधिकारी तक्रार MHFDA-2026-000101 च्या घटनास्थळाची आणि तपशीलांची तपासणी करत आहेत."
+    },
+    "date": "2026-06-06T03:39:06.140Z",
+    "read": false
+  }
+]

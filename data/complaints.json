@@ -1,0 +1,67 @@
+[
+  {
+    "id": "MHFDA-2026-000101",
+    "name": "Omkar Somkuwar",
+    "mobile": "9876543210",
+    "category": "food",
+    "title": "Adulterated Paneer in Pune Sweet Home",
+    "description": "Purchased 500g paneer on June 5. It had a rubbery texture, acidic smell, and turned dark blue when tested with home starch detection solution. Store Address: Pune Sweet Home, FC Road, Pune.",
+    "status": "Investigation",
+    "assignedOfficer": "Officer S. D. Deshmukh",
+    "evidence": [
+      "https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=500&auto=format&fit=crop&q=60"
+    ],
+    "location": {
+      "address": "FC Road, Pune, Maharashtra",
+      "latitude": 18.5204,
+      "longitude": 73.8567
+    },
+    "createdAt": "2026-06-05T03:38:55.664Z",
+    "notes": [
+      {
+        "id": "note-1",
+        "author": "Officer S. D. Deshmukh",
+        "timestamp": "2026-06-05T15:38:55.667Z",
+        "comment": "Conducted on-site inspection. Found sanitation compliance failures in food prep area. Collected 200g paneer sample and dispatched to Central Laboratory for starch chemical verification."
+      }
+    ]
+  },
+  {
+    "id": "MHFDA-2026-000102",
+    "name": "Ashish Kulkarni",
+    "mobile": "9876543210",
+    "category": "drug",
+    "title": "Expired Paracetamol strip sold with scratched date",
+    "description": "A strip of Paracetamol 650 was sold at Apollo Meds in Bandra. The pharmacist deliberately scratched off the expiry date text. Close inspection revealed the expiry was November 2025. Invoice collected.",
+    "status": "Assigned",
+    "assignedOfficer": "Inspector V. R. More",
+    "evidence": [
+      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=60"
+    ],
+    "location": {
+      "address": "Bandra West, Mumbai, Maharashtra",
+      "latitude": 19.0596,
+      "longitude": 72.8295
+    },
+    "createdAt": "2026-06-05T23:38:55.668Z",
+    "notes": []
+  },
+  {
+    "id": "MHFDA-2026-000103",
+    "name": "Praniti Joshi",
+    "mobile": "9999999999",
+    "category": "cosmetic",
+    "title": "Counterfeit Lipstick causing chemical skin burns",
+    "description": "Purchased a lipstick labelled as premium herbal brand from local street seller in Thane. Post application, lips developed painful swelling and chemical rashes. Packing lack batch prints and ingredient list.",
+    "status": "Action Taken",
+    "assignedOfficer": "",
+    "evidence": [],
+    "location": {
+      "address": "Thane Station Road, Thane, Maharashtra",
+      "latitude": 19.186,
+      "longitude": 72.9639
+    },
+    "createdAt": "2026-06-06T01:38:55.668Z",
+    "notes": []
+  }
+]
