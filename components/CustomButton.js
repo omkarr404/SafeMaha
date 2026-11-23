@@ -2,59 +2,72 @@
 
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { colors, borderRadius, spacing } from '../constants/theme';
 
 export default function CustomButton({
   title,
   onPress,
-  variant = 'primary',
+  variant = 'primary', // 'primary' | 'secondary' | 'destructive' | 'outline' | 'accent'
   disabled = false,
   loading = false,
   style,
   textStyle,
   icon,
 }) {
-  const buttonStyles = [styles.button];
-  const labelStyles = [styles.text];
+  const getButtonStyle = () => {
+    switch (variant) {
+      case 'secondary':
+        return styles.secondaryButton;
+      case 'destructive':
+      case 'danger':
+        return styles.destructiveButton;
+      case 'outline':
+        return styles.outlineButton;
+      case 'accent':
+        return styles.secondaryButton; // Re-mapped to enterprise secondary blue
+      case 'primary':
+      default:
+        return styles.primaryButton;
+    }
+  };
 
-  if (variant === 'primary') {
-    buttonStyles.push(styles.primaryButton);
-    labelStyles.push(styles.primaryText);
-  } else if (variant === 'secondary') {
-    buttonStyles.push(styles.secondaryButton);
-    labelStyles.push(styles.secondaryText);
-  } else if (variant === 'accent') {
-    buttonStyles.push(styles.accentButton);
-    labelStyles.push(styles.accentText);
-  } else if (variant === 'outline') {
-    buttonStyles.push(styles.outlineButton);
-    labelStyles.push(styles.outlineText);
-  }
-
-  if (disabled) {
-    buttonStyles.push(styles.disabledButton);
-    labelStyles.push(styles.disabledText);
-  }
-
-  if (style) {
-    buttonStyles.push(style);
-  }
-  if (textStyle) {
-    labelStyles.push(textStyle);
-  }
+  const getTextStyle = () => {
+    switch (variant) {
+      case 'outline':
+        return styles.outlineText;
+      case 'secondary':
+      case 'destructive':
+      case 'danger':
+      case 'accent':
+      case 'primary':
+      default:
+        return styles.whiteText;
+    }
+  };
 
   return (
     <TouchableOpacity
-      style={buttonStyles}
+      style={[
+        styles.buttonBase,
+        getButtonStyle(),
+        disabled && styles.disabledButton,
+        style,
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={variant === 'outline' ? '#0A3D62' : '#FFFFFF'} />
+        <ActivityIndicator 
+          size="small" 
+          color={variant === 'outline' ? colors.primary : '#FFFFFF'} 
+        />
       ) : (
         <View style={styles.contentContainer}>
           {icon && <View style={styles.iconContainer}>{icon}</View>}
-          <Text style={labelStyles}>{title}</Text>
+          <Text style={[styles.textBase, getTextStyle(), disabled && styles.disabledText, textStyle]}>
+            {title}
+          </Text>
         </View>
       )}
     </TouchableOpacity>
@@ -62,18 +75,15 @@ export default function CustomButton({
 }
 
 const styles = StyleSheet.create({
-  button: {
-    height: 50,
-    borderRadius: 8,
+  buttonBase: {
+    height: 48,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
+    paddingHorizontal: spacing.lg,
+    marginVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
     width: '100%',
   },
   contentContainer: {
@@ -82,48 +92,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconContainer: {
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   primaryButton: {
-    backgroundColor: '#0A3D62',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   secondaryButton: {
-    backgroundColor: '#3C6382',
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
   },
-  accentButton: {
-    backgroundColor: '#38ADA9',
+  destructiveButton: {
+    backgroundColor: colors.critical,
+    borderColor: colors.critical,
   },
   outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#0A3D62',
-    elevation: 0,
-    shadowOpacity: 0,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
   disabledButton: {
-    backgroundColor: '#D1D8E0',
-    borderColor: '#D1D8E0',
-    elevation: 0,
-    shadowOpacity: 0,
+    backgroundColor: '#F1F5F9',
+    borderColor: colors.border,
   },
-  text: {
-    fontSize: 16,
+  textBase: {
+    fontSize: 15,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  primaryText: {
-    color: '#FFFFFF',
-  },
-  secondaryText: {
-    color: '#FFFFFF',
-  },
-  accentText: {
+  whiteText: {
     color: '#FFFFFF',
   },
   outlineText: {
-    color: '#0A3D62',
+    color: colors.primary,
   },
   disabledText: {
-    color: '#888888',
+    color: colors.textMuted,
   },
 });

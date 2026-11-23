@@ -49,7 +49,8 @@ export const getAllComplaints = async () => {
         const complaints = await res.json();
         // Sync local storage
         await AsyncStorage.setItem(COMPLAINTS_KEY, JSON.stringify(complaints));
-        return complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Backend returns created_at (snake_case); handle both for robustness
+        return complaints.sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt));
       }
     } catch (apiError) {
       // Server is offline, fall back silently to AsyncStorage
@@ -60,7 +61,7 @@ export const getAllComplaints = async () => {
       return [];
     }
     const complaints = JSON.parse(rawData);
-    return complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return complaints.sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt));
   } catch (error) {
     console.error('Error in getAllComplaints:', error);
     return [];

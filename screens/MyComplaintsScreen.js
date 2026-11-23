@@ -1,3 +1,5 @@
+// FILE NAME: d:\Omkar\Water\FDA\screens\MyComplaintsScreen.js
+
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -8,8 +10,9 @@ import {
   FlatList, 
   TouchableOpacity, 
   ActivityIndicator, 
-  Alert,
-  StatusBar
+  Alert, 
+  StatusBar, 
+  Platform 
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useComplaints } from '../context/ComplaintContext';
@@ -17,6 +20,7 @@ import CustomButton from '../components/CustomButton';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as authService from '../services/authService';
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 const SAVED_MOBILE_KEY = '@safemaha_saved_mobile';
 
@@ -30,7 +34,7 @@ export default function MyComplaintsScreen({ navigation }) {
   const [isMobileSaved, setIsMobileSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userComplaints, setUserComplaints] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState('All'); // 'All', 'Submitted', 'Investigation', 'Closed'
+  const [selectedFilter, setSelectedFilter] = useState('All');
 
   useEffect(() => {
     checkSavedMobile();
@@ -52,7 +56,6 @@ export default function MyComplaintsScreen({ navigation }) {
         setIsMobileSaved(true);
         await refreshComplaints();
       } else {
-        // Fallback to check legacy saved mobile if not fully logged in
         const legacyMobile = await AsyncStorage.getItem(SAVED_MOBILE_KEY);
         if (legacyMobile) {
           setMobileNumber(legacyMobile);
@@ -79,8 +82,10 @@ export default function MyComplaintsScreen({ navigation }) {
       await authService.requestOTP(formatted);
       setOtpSent(true);
       Alert.alert(
-        locale === 'mr' ? 'ओटीपी पाठवला' : 'OTP Sent',
-        locale === 'mr' ? 'तुमच्या मोबाईलवर ६ अंकी ओटीपी पाठवला आहे. (चाचणीसाठी १२३४५६ वापरा)' : 'A 6-digit code has been sent to your phone. (Use 123456 for testing)'
+        locale === 'mr' ? 'ओटीपी पाठवला' : 'OTP Dispatched',
+        locale === 'mr' 
+          ? 'तुमच्या मोबाईलवर ६ अंकी ओटीपी पाठवला आहे. (चाचणीसाठी 123456 वापरा)' 
+          : 'A 6-digit code has been sent to your phone. (Use 123456 for testing)'
       );
     } catch (e) {
       console.log('Error sending OTP:', e);
@@ -104,8 +109,6 @@ export default function MyComplaintsScreen({ navigation }) {
     try {
       const phoneFormatted = mobileNumber.trim();
       await authService.verifyOTP(phoneFormatted, codeFormatted);
-      
-      // Save legacy key for backward compatibility
       await AsyncStorage.setItem(SAVED_MOBILE_KEY, phoneFormatted);
       
       setIsMobileSaved(true);
@@ -114,288 +117,226 @@ export default function MyComplaintsScreen({ navigation }) {
       await refreshComplaints();
     } catch (e) {
       console.log('Error verifying OTP:', e);
-      Alert.alert(t('common.error'), e.message || 'Invalid verification OTP.');
+      Alert.alert(t('common.error'), e.message || 'Invalid verification OTP code.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogOut = async () => {
-    Alert.alert(
-      locale === 'mr' ? 'बाहेर पडा?' : 'Logout Account?',
-      locale === 'mr' ? 'तुम्ही खात्रीने बाहेर पडू इच्छिता?' : 'Are you sure you want to log out of this device?',
-      [
-        { text: locale === 'mr' ? 'रद्द करा' : 'Cancel', style: 'cancel' },
-        { 
-          text: locale === 'mr' ? 'बाहेर पडा' : 'Logout', 
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await authService.logout();
-              await AsyncStorage.removeItem(SAVED_MOBILE_KEY);
-              setMobileNumber('');
-              setIsMobileSaved(false);
-              setUserComplaints([]);
-            } catch (e) {
-              console.log('Error clearing session:', e);
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+  const handleLogout = async () => {
+    await authService.logout();
+    await AsyncStorage.removeItem(SAVED_MOBILE_KEY);
+    setIsMobileSaved(false);
+    setMobileNumber('');
+    setUserComplaints([]);
   };
 
   const filterUserComplaints = () => {
-    // Filter by user mobile
-    const filteredByMobile = allComplaints.filter(
-      (c) => c.mobile && c.mobile.trim() === mobileNumber.trim()
-    );
+    const cleanCurrent = mobileNumber.replace(/\D/g, '').slice(-10);
+    const mine = (allComplaints || []).filter((c) => {
+      const cMobile = (c.mobile || '').replace(/\D/g, '').slice(-10);
+      return cMobile === cleanCurrent;
+    });
 
-    // Filter by tab
-    if (selectedFilter === 'All') {
-      setUserComplaints(filteredByMobile);
-    } else if (selectedFilter === 'Submitted') {
-      setUserComplaints(
-        filteredByMobile.filter((c) => c.status === 'Submitted' || c.status === 'Assigned')
-      );
-    } else if (selectedFilter === 'Investigation') {
-      setUserComplaints(
-        filteredByMobile.filter((c) => c.status === 'Investigation' || c.status === 'Action Taken')
-      );
-    } else if (selectedFilter === 'Closed') {
-      setUserComplaints(filteredByMobile.filter((c) => c.status === 'Closed'));
+    if (selectedFilter === 'Active') {
+      setUserComplaints(mine.filter((c) => c.status !== 'Closed'));
+    } else if (selectedFilter === 'Resolved') {
+      setUserComplaints(mine.filter((c) => c.status === 'Closed'));
+    } else {
+      setUserComplaints(mine);
     }
   };
 
-  // Status badging styles
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Submitted': return '#3C6382';
-      case 'Assigned': return '#0A3D62';
-      case 'Investigation': return '#E58E26';
-      case 'Action Taken': return '#38ADA9';
-      case 'Closed': return '#888888';
-      default: return '#0A3D62';
+  const formattedDate = (dateVal) => {
+    if (!dateVal) return '—';
+    try {
+      const d = new Date(dateVal);
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return String(dateVal);
     }
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'Submitted': return t('status.timeline.submitted');
-      case 'Assigned': return t('status.timeline.assigned');
-      case 'Investigation': return t('status.timeline.investigation');
-      case 'Action Taken': return t('status.timeline.actionTaken');
-      case 'Closed': return t('status.timeline.closed');
-      default: return status;
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'Critical': return colors.critical;
+      case 'High': return colors.warning;
+      case 'Medium': return colors.info;
+      case 'Low': default: return colors.success;
     }
   };
-
-  const getCategoryLabel = (cat) => {
-    switch (cat) {
-      case 'food': return t('form.categories.food');
-      case 'drug': return t('form.categories.drug');
-      case 'cosmetic': return t('form.categories.cosmetic');
-      case 'other': return t('form.categories.other');
-      default: return cat;
-    }
-  };
-
-  const renderComplaintItem = ({ item }) => {
-    const formattedDate = new Date(item.createdAt).toLocaleDateString(
-      locale === 'mr' ? 'mr-IN' : 'en-US',
-      { year: 'numeric', month: 'short', day: 'numeric' }
-    );
-
-    return (
-      <TouchableOpacity 
-        style={styles.card} 
-        activeOpacity={0.9}
-        onPress={() => navigation.navigate('ComplaintStatus', { complaintId: item.id })}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardId}>{item.id}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
-            <Text style={[styles.statusBadgeText, { color: getStatusColor(item.status) }]}>
-              {getStatusLabel(item.status)}
-            </Text>
-          </View>
-        </View>
-        
-        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-        
-        <View style={styles.cardMeta}>
-          <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
-          <Text style={styles.dateText}>{formattedDate}</Text>
-        </View>
-
-        <View style={styles.cardFooter}>
-          <Text style={styles.viewDetailsText}>{t('track.viewDetails')} →</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0A3D62" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Render Mobile Number Input Prompt
-  if (!isMobileSaved) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={styles.promptContainer}>
-          <View style={styles.promptHeader}>
-            <View style={styles.promptIconWrapper}>
-              <Ionicons name="folder-open" size={40} color="#0A3D62" />
-            </View>
-            <Text style={styles.promptTitle}>{t('myComplaints.mobilePromptTitle')}</Text>
-            <Text style={styles.promptDesc}>{t('myComplaints.mobilePromptDesc')}</Text>
-          </View>
-
-          <View style={styles.promptForm}>
-            {!otpSent ? (
-              <>
-                <Text style={styles.promptInputLabel}>{t('form.mobileLabel')}</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="phone-portrait-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('myComplaints.mobilePlaceholder')}
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    value={mobileNumber}
-                    onChangeText={setMobileNumber}
-                  />
-                </View>
-                <CustomButton
-                  title={locale === 'mr' ? 'ओटीपी पाठवा' : 'Request OTP'}
-                  onPress={handleSendOTP}
-                  style={styles.promptBtn}
-                />
-              </>
-            ) : (
-              <>
-                <Text style={styles.promptInputLabel}>{locale === 'mr' ? 'ओटीपी कोड' : 'Verification OTP Code'}</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 123456"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    value={otpCode}
-                    onChangeText={setOtpCode}
-                  />
-                </View>
-                <CustomButton
-                  title={locale === 'mr' ? 'सत्यापित करा' : 'Verify & Login'}
-                  onPress={handleVerifyOTP}
-                  style={styles.promptBtn}
-                />
-                <TouchableOpacity 
-                  onPress={() => {
-                    setOtpSent(false);
-                    setOtpCode('');
-                  }}
-                  style={{ marginTop: 15, alignItems: 'center' }}
-                >
-                  <Text style={{ color: '#0A3D62', fontSize: 14, fontWeight: '700' }}>
-                    ← {locale === 'mr' ? 'मोबाईल नंबर बदला' : 'Change Phone Number'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Render Complaints History List
-  const filtersList = [
-    { key: 'All', label: t('myComplaints.filters.all') },
-    { key: 'Submitted', label: t('myComplaints.filters.submitted') },
-    { key: 'Investigation', label: t('myComplaints.filters.investigation') },
-    { key: 'Closed', label: t('myComplaints.filters.closed') }
-  ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <View style={styles.container}>
-        
-        {/* User Mobile Banner */}
-        <View style={styles.mobileBanner}>
-          <View style={styles.mobileBannerLeft}>
-            <Ionicons name="person-circle" size={24} color="#0A3D62" />
-            <Text style={styles.mobileBannerText}>+91 {mobileNumber}</Text>
-          </View>
-          <TouchableOpacity onPress={handleLogOut} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-            <Text style={styles.logoutText}>{t('myComplaints.changeNumber')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Filters */}
-        <View style={styles.tabContainer}>
-          {filtersList.map((filter) => (
-            <TouchableOpacity
-              key={filter.key}
-              style={[
-                styles.tabButton,
-                selectedFilter === filter.key && styles.tabButtonActive
-              ]}
-              onPress={() => setSelectedFilter(filter.key)}
-            >
-              <Text style={[
-                styles.tabText,
-                selectedFilter === filter.key && styles.tabTextActive
-              ]}>
-                {filter.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Complaints List */}
-        <View style={styles.listContainer}>
-          {userComplaints.length > 0 ? (
-            <FlatList
-              data={userComplaints}
-              keyExtractor={(item) => item.id}
-              renderItem={renderComplaintItem}
-              contentContainerStyle={styles.listScroll}
-              showsVerticalScrollIndicator={false}
-              refreshing={loading}
-              onRefresh={refreshComplaints}
-            />
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="document-text-outline" size={60} color="#CBD5E1" />
-              <Text style={styles.emptyText}>{t('myComplaints.emptyState')}</Text>
-              <CustomButton
-                title={locale === 'mr' ? 'तक्रार दाखल करा' : 'File a New Complaint'}
-                onPress={() => navigation.navigate('ComplaintForm')}
-                variant="outline"
-                style={styles.emptyBtn}
-              />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
+      {/* View 1: OTP Login / Authentication Required */}
+      {!isMobileSaved ? (
+        <View style={styles.authContainer}>
+          <View style={styles.authCard}>
+            <View style={styles.authIconWrap}>
+              <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
             </View>
-          )}
-        </View>
+            <Text style={styles.authTitle}>
+              {locale === 'mr' ? 'नागरिक ओळख पडताळणी' : 'Citizen Verification'}
+            </Text>
+            <Text style={styles.authSub}>
+              {locale === 'mr'
+                ? 'आपल्या नोंदणीकृत तक्रारी पाहण्यासाठी मोबाईल क्रमांक प्रमाणित करा.'
+                : 'Enter your registered mobile number to view personal grievance history.'}
+            </Text>
 
-      </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('form.mobileLabel')}</Text>
+              <View style={styles.phoneInputWrap}>
+                <View style={styles.prefixBox}><Text style={styles.prefixText}>+91</Text></View>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="10-digit mobile number"
+                  placeholderTextColor={colors.textMuted}
+                  value={mobileNumber}
+                  onChangeText={(t) => setMobileNumber(t.replace(/[^0-9]/g, ''))}
+                  keyboardType="numeric"
+                  maxLength={10}
+                  editable={!otpSent}
+                />
+              </View>
+            </View>
+
+            {otpSent && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {locale === 'mr' ? '६-अंकी ओटीपी प्रविष्ट करा' : '6-Digit OTP Code'}
+                </Text>
+                <TextInput
+                  style={styles.otpInput}
+                  placeholder="Enter 6-digit code"
+                  placeholderTextColor={colors.textMuted}
+                  value={otpCode}
+                  onChangeText={setOtpCode}
+                  keyboardType="numeric"
+                  maxLength={6}
+                />
+              </View>
+            )}
+
+            <View style={{ marginTop: spacing.sm }}>
+              {!otpSent ? (
+                <CustomButton
+                  title={locale === 'mr' ? 'ओटीपी मिळवा' : 'Request OTP Code'}
+                  onPress={handleSendOTP}
+                  variant="primary"
+                  loading={loading}
+                  icon={<Ionicons name="chatbubble-ellipses-outline" size={16} color="#FFFFFF" />}
+                />
+              ) : (
+                <CustomButton
+                  title={locale === 'mr' ? 'प्रमाणित करा व प्रवेश करा' : 'Verify & View History'}
+                  onPress={handleVerifyOTP}
+                  variant="primary"
+                  loading={loading}
+                  icon={<Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />}
+                />
+              )}
+            </View>
+          </View>
+        </View>
+      ) : (
+        /* View 2: Authenticated Citizen Grievance History */
+        <View style={styles.container}>
+          
+          {/* Top User Bar */}
+          <View style={styles.userBar}>
+            <View>
+              <Text style={styles.userBarPhone}>Registered: +91 {mobileNumber}</Text>
+              <Text style={styles.userBarSub}>{userComplaints.length} registered grievance(s)</Text>
+            </View>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={14} color={colors.critical} />
+              <Text style={styles.logoutBtnText}>{locale === 'mr' ? 'बाहेर पडा' : 'Switch'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Filter Pills */}
+          <View style={styles.filterBar}>
+            {['All', 'Active', 'Resolved'].map((filter) => (
+              <TouchableOpacity
+                key={filter}
+                style={[
+                  styles.filterPill,
+                  selectedFilter === filter && styles.filterPillActive,
+                ]}
+                onPress={() => setSelectedFilter(filter)}
+              >
+                <Text style={[
+                  styles.filterPillText,
+                  selectedFilter === filter && styles.filterPillTextActive,
+                ]}>
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Grievances List */}
+          <FlatList
+            data={userComplaints}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.complaintCard}
+                onPress={() => navigation.navigate('ComplaintStatus', { complaintId: item.id })}
+                activeOpacity={0.85}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardRefId}>{item.id}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: item.status === 'Closed' ? colors.successBg : colors.infoBg }]}>
+                    <Text style={[styles.statusBadgeText, { color: item.status === 'Closed' ? colors.success : colors.secondary }]}>
+                      {item.status}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                
+                <View style={styles.cardFooter}>
+                  <View style={styles.priorityIndicator}>
+                    <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(item.priority) }]} />
+                    <Text style={styles.priorityText}>{item.priority || 'Low'} Priority</Text>
+                  </View>
+                  <Text style={styles.cardDateText}>{formattedDate(item.createdAt || item.created_at)}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="folder-open-outline" size={44} color={colors.textMuted} />
+                <Text style={styles.emptyTitle}>
+                  {locale === 'mr' ? 'कोणतीही तक्रार आढळली नाही' : 'No Grievances Found'}
+                </Text>
+                <Text style={styles.emptySub}>
+                  {locale === 'mr' 
+                    ? 'या मोबाईल क्रमांकावर सध्या कोणतीही तक्रार नोंदवलेली नाही.' 
+                    : 'You have not registered any grievances under this mobile number yet.'}
+                </Text>
+                <CustomButton
+                  title={locale === 'mr' ? 'नवीन तक्रार नोंदवा' : 'File a New Complaint'}
+                  onPress={() => navigation.navigate('ComplaintForm')}
+                  variant="primary"
+                  style={{ width: 220, marginTop: 16 }}
+                />
+              </View>
+            }
+          />
+
+        </View>
+      )}
+
     </SafeAreaView>
   );
 }
@@ -403,232 +344,241 @@ export default function MyComplaintsScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
   },
-  loadingContainer: {
+  authContainer: {
     flex: 1,
+    padding: spacing.xl,
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  promptContainer: {
-    flex: 1,
-    padding: 24,
+  authCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  authIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.infoBg,
+    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    alignSelf: 'center',
+    marginBottom: spacing.md,
   },
-  promptHeader: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  promptIconWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#0A3D6210',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  promptTitle: {
-    fontSize: 24,
+  authTitle: {
+    fontSize: 18,
     fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 10,
-  },
-  promptDesc: {
-    fontSize: 14,
-    color: '#64748B',
+    color: colors.text,
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 16,
+    marginBottom: 4,
   },
-  promptForm: {
-    width: '100%',
+  authSub: {
+    fontSize: 12.5,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 18,
   },
-  promptInputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 8,
+  inputGroup: {
+    marginBottom: spacing.md,
   },
-  inputWrapper: {
+  inputLabel: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 6,
+  },
+  phoneInputWrap: {
     flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    height: 44,
+    overflow: 'hidden',
+  },
+  prefixBox: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 48,
-    marginBottom: 20,
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
   },
-  inputIcon: {
-    marginRight: 10,
+  prefixText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
-  input: {
+  phoneInput: {
     flex: 1,
+    paddingHorizontal: spacing.md,
+    fontSize: 14,
+    color: colors.text,
+  },
+  otpInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    height: 44,
+    paddingHorizontal: spacing.md,
     fontSize: 16,
-    color: '#0F172A',
-    height: '100%',
+    textAlign: 'center',
+    letterSpacing: 4,
+    color: colors.primary,
+    fontWeight: '700',
   },
-  promptBtn: {
-    height: 48,
-  },
-  mobileBanner: {
+  userBar: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
+    borderBottomColor: colors.border,
   },
-  mobileBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  mobileBannerText: {
-    fontSize: 15,
+  userBarPhone: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#0A3D62',
-    marginLeft: 6,
+    color: colors.text,
+  },
+  userBarSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    backgroundColor: '#FEF2F2',
+    gap: 4,
     paddingVertical: 4,
     paddingHorizontal: 8,
-    borderRadius: 6,
+    borderRadius: borderRadius.sm,
+    backgroundColor: '#FEF2F2',
   },
-  logoutText: {
+  logoutBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#EF4444',
-    marginLeft: 4,
+    color: colors.critical,
   },
-  tabContainer: {
+  filterBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    gap: 8,
+    backgroundColor: colors.background,
+  },
+  filterPill: {
     paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 8,
-    marginHorizontal: 2,
+  filterPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  tabButtonActive: {
-    backgroundColor: '#0A3D62',
-  },
-  tabText: {
+  filterPillText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
-  tabTextActive: {
+  filterPillTextActive: {
     color: '#FFFFFF',
   },
   listContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
-  listScroll: {
-    paddingBottom: 24,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+  complaintCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0A3D62',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  cardId: {
-    fontSize: 15,
+  cardRefId: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 14,
     fontWeight: '800',
-    color: '#0A3D62',
+    color: colors.primary,
   },
   statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
   },
   statusBadgeText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
-  cardMeta: {
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 8,
   },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#3C6382',
-  },
-  dateText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  cardFooter: {
-    alignItems: 'flex-start',
-  },
-  viewDetailsText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#38ADA9',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  priorityIndicator: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 30,
-    marginTop: 40,
+    gap: 5,
   },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#64748B',
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  cardDateText: {
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    fontWeight: '500',
-    marginBottom: 20,
-  },
-  emptyBtn: {
-    width: 200,
+    maxWidth: 280,
+    lineHeight: 17,
   },
 });

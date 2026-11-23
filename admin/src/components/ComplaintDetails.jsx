@@ -1,489 +1,823 @@
 // FILE NAME: d:\Omkar\Water\FDA\admin\src\components\ComplaintDetails.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import './ComplaintDetails.css';
 
 const MOCK_SERVER_URL = 'http://localhost:8000';
 
 export default function ComplaintDetails({ complaintId, complaints, onBack, onUpdateComplaint }) {
   const complaint = complaints.find((c) => c.id === complaintId);
-  
+
   if (!complaint) {
     return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <h3>Complaint not found</h3>
-        <button className="btn btn-primary" onClick={onBack} style={{ marginTop: '16px' }}>Go Back</button>
+      <div className="gov-empty-state" style={{ padding: '80px 20px' }}>
+        <div className="gov-empty-icon">
+          <i className="fa-solid fa-circle-question"></i>
+        </div>
+        <h3 className="gov-empty-title">Grievance Record Not Found</h3>
+        <p className="gov-empty-desc">
+          The requested complaint identifier "{complaintId}" does not exist in the active registry.
+        </p>
+        <button className="gov-btn gov-btn-primary gov-btn-sm" onClick={onBack}>
+          <i className="fa-solid fa-arrow-left"></i> Return to Registry
+        </button>
       </div>
     );
   }
 
+  // Local Form & State Management
   const [officerName, setOfficerName] = useState(complaint.assignedOfficer || '');
+  const [status, setStatus] = useState(complaint.status || 'Submitted');
+  const [priority, setPriority] = useState(complaint.priority || 'Low');
   const [newNote, setNewNote] = useState('');
-  const [status, setStatus] = useState(complaint.status);
   const [showNotesForm, setShowNotesForm] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [savingAction, setSavingAction] = useState(false);
 
+  // Evidence Lightbox State
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+
+  // Backend Async Data States
   const [officers, setOfficers] = useState([]);
   const [escalations, setEscalations] = useState([]);
   const [audits, setAudits] = useState([]);
-  const [priority, setPriority] = useState(complaint.priority || 'Low');
+  const [loadingAsync, setLoadingAsync] = useState(true);
 
+  // Load live officers, escalations, and audits from backend
   useEffect(() => {
-    // Fetch officers
+    setLoadingAsync(true);
     const token = localStorage.getItem('@safemaha_admin_token');
-    fetch(`${MOCK_SERVER_URL}/api/admin/officers`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setOfficers(data.filter(o => o.is_active));
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    Promise.all([
+      fetch(`${MOCK_SERVER_URL}/api/admin/officers/`, { headers })
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+      fetch(`${MOCK_SERVER_URL}/api/admin/complaints/${complaint.id}/escalations`, { headers })
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+      fetch(`${MOCK_SERVER_URL}/api/admin/complaints/${complaint.id}/audits`, { headers })
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+    ])
+      .then(([officersData, escalationsData, auditsData]) => {
+        setOfficers(Array.isArray(officersData) ? officersData.filter((o) => o.is_active) : []);
+        setEscalations(Array.isArray(escalationsData) ? escalationsData : []);
+        setAudits(Array.isArray(auditsData) ? auditsData : []);
       })
-      .catch(err => console.error('Error loading officers:', err));
-
-    // Fetch escalations
-    fetch(`${MOCK_SERVER_URL}/api/admin/complaints/${complaint.id}/escalations`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => setEscalations(data))
-      .catch(err => console.error('Error loading escalations:', err));
-
-    // Fetch audits
-    fetch(`${MOCK_SERVER_URL}/api/admin/complaints/${complaint.id}/audits`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => setAudits(data))
-      .catch(err => console.error('Error loading audits:', err));
+      .finally(() => setLoadingAsync(false));
   }, [complaint.id]);
 
-  const handlePriorityChange = (e) => {
-    const newPriority = e.target.value;
-    setPriority(newPriority);
-    const updated = {
-      ...complaint,
-      priority: newPriority,
-      actor_email: JSON.parse(localStorage.getItem('@safemaha_admin_user'))?.email || 'admin@fda.gov.in'
-    };
-    onUpdateComplaint(updated);
+  // Synchronize local form when complaint prop updates
+  useEffect(() => {
+    setOfficerName(complaint.assignedOfficer || '');
+    setStatus(complaint.status || 'Submitted');
+    setPriority(complaint.priority || 'Low');
+  }, [complaint]);
+
+  // Overdue / SLA breach calculation
+  const slaStatus = useMemo(() => {
+    const created = new Date(complaint.createdAt || complaint.created_at || Date.now());
+    const hoursElapsed = (Date.now() - created.getTime()) / (1000 * 3600);
+    const isClosed = complaint.status === 'Closed';
+
+    if (isClosed) {
+      return { isOverdue: false, label: 'Resolved within SLA', type: 'resolved' };
+    }
+
+    if (complaint.priority === 'Critical') {
+      if (hoursElapsed > 24) {
+        return {
+          isOverdue: true,
+          label: `Critical SLA Breached (${Math.floor(hoursElapsed)}h elapsed > 24h limit)`,
+          type: 'breach',
+        };
+      }
+      return {
+        isOverdue: false,
+        label: `Critical SLA Active (${Math.floor(24 - hoursElapsed)}h remaining)`,
+        type: 'warning',
+      };
+    }
+
+    if (complaint.priority === 'High') {
+      if (hoursElapsed > 72) {
+        return {
+          isOverdue: true,
+          label: `High Priority SLA Breached (${Math.floor(hoursElapsed / 24)} days elapsed)`,
+          type: 'breach',
+        };
+      }
+    }
+
+    return { isOverdue: false, label: 'Standard SLA Active', type: 'normal' };
+  }, [complaint]);
+
+  // Copy reference ID handler
+  const handleCopyId = () => {
+    navigator.clipboard?.writeText(complaint.id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
+  // Status update
+  const handleStatusChange = async (e) => {
+    const nextStatus = e.target.value;
+    setStatus(nextStatus);
+    setSavingAction(true);
 
-  const handleStatusChange = (e) => {
-    const newStatus = e.target.value;
-    setStatus(newStatus);
-    
-    // Automatically triggers update
+    const actorEmail =
+      JSON.parse(localStorage.getItem('@safemaha_admin_user'))?.email || 'admin@fda.gov.in';
+
     const updated = {
       ...complaint,
-      status: newStatus,
-      actor_email: JSON.parse(localStorage.getItem('@safemaha_admin_user'))?.email || 'admin@fda.gov.in'
+      status: nextStatus,
+      actor_email: actorEmail,
     };
-    onUpdateComplaint(updated);
+
+    try {
+      await onUpdateComplaint(updated);
+    } finally {
+      setSavingAction(false);
+    }
   };
 
-  const handleAssignOfficer = (e) => {
+  // Priority update
+  const handlePriorityChange = async (e) => {
+    const nextPriority = e.target.value;
+    setPriority(nextPriority);
+    setSavingAction(true);
+
+    const actorEmail =
+      JSON.parse(localStorage.getItem('@safemaha_admin_user'))?.email || 'admin@fda.gov.in';
+
+    const updated = {
+      ...complaint,
+      priority: nextPriority,
+      actor_email: actorEmail,
+    };
+
+    try {
+      await onUpdateComplaint(updated);
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
+  // Assign Officer
+  const handleAssignOfficer = async (e) => {
     e.preventDefault();
     if (!officerName.trim()) return;
+
+    setSavingAction(true);
+    const actorEmail =
+      JSON.parse(localStorage.getItem('@safemaha_admin_user'))?.email || 'admin@fda.gov.in';
+
+    const nextStatus = complaint.status === 'Submitted' ? 'Assigned' : complaint.status;
 
     const updated = {
       ...complaint,
       assignedOfficer: officerName.trim(),
-      status: complaint.status === 'Submitted' ? 'Assigned' : complaint.status, // Auto promote to Assigned
-      actor_email: JSON.parse(localStorage.getItem('@safemaha_admin_user'))?.email || 'admin@fda.gov.in'
+      status: nextStatus,
+      actor_email: actorEmail,
     };
-    
-    if (complaint.status === 'Submitted') {
-      setStatus('Assigned');
+
+    try {
+      await onUpdateComplaint(updated);
+      setStatus(nextStatus);
+    } finally {
+      setSavingAction(false);
     }
-    
-    onUpdateComplaint(updated);
-    alert('Officer assigned successfully!');
   };
 
-
-  const handleAddNote = (e) => {
+  // Add Investigation Note
+  const handleAddNote = async (e) => {
     e.preventDefault();
     if (!newNote.trim()) return;
 
-    const notes = complaint.notes || [];
+    setSavingAction(true);
+    const actorUser = JSON.parse(localStorage.getItem('@safemaha_admin_user'));
+    const authorName = actorUser?.name || complaint.assignedOfficer || 'FDA Administrator';
+
     const createdNote = {
       id: `note-${Date.now()}`,
-      author: complaint.assignedOfficer || 'FDA Administrator',
+      author: authorName,
       timestamp: new Date().toISOString(),
       comment: newNote.trim(),
     };
 
     const updated = {
       ...complaint,
-      notes: [createdNote, ...notes]
+      notes: [createdNote, ...(complaint.notes || [])],
+      actor_email: actorUser?.email || 'admin@fda.gov.in',
     };
 
-    onUpdateComplaint(updated);
-    setNewNote('');
-    setShowNotesForm(false);
-  };
-
-  const getCategoryLabel = (category) => {
-    switch (category) {
-      case 'food': return 'Food Safety';
-      case 'drug': return 'Drug Safety';
-      case 'cosmetic': return 'Cosmetic Safety';
-      case 'other': return 'Other Grievance';
-      default: return category;
+    try {
+      await onUpdateComplaint(updated);
+      setNewNote('');
+      setShowNotesForm(false);
+    } finally {
+      setSavingAction(false);
     }
   };
 
-  const formattedDate = (isoString) => {
-    return new Date(isoString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
+  // Stepper milestones
   const timelineSteps = [
-    { key: 'Submitted', label: 'Submitted', desc: 'Citizen registered the complaint and ID was generated.' },
-    { key: 'Assigned', label: 'Assigned', desc: 'Grievance assigned to regional Food & Drug Officer.' },
-    { key: 'Investigation', label: 'Investigation', desc: 'On-site inspections and batch analysis initiated.' },
-    { key: 'Action Taken', label: 'Action Taken', desc: 'Notices served or corrective recalls enforced.' },
-    { key: 'Closed', label: 'Closed', desc: 'Case resolution audits completed and archived.' }
+    { key: 'Submitted', label: '1. Registration & Triage', desc: 'Grievance lodged, auto-priority calculated.' },
+    { key: 'Assigned', label: '2. Officer Assignment', desc: 'Jurisdiction assigned to Food & Drug Inspector.' },
+    { key: 'Investigation', label: '3. Field Investigation', desc: 'On-site inspections, evidence verification, and sampling.' },
+    { key: 'Action Taken', label: '4. Enforcement & Notice', desc: 'Seizures, show-cause notices, or batch recalls.' },
+    { key: 'Closed', label: '5. Resolution & Archive', desc: 'Findings recorded, citizen informed, case resolved.' },
   ];
 
-  const activeIndex = timelineSteps.findIndex((step) => step.key === complaint.status);
+  const activeStepIndex = timelineSteps.findIndex((s) => s.key === complaint.status);
+
+  // Format date helper
+  const formattedDate = (dateVal) => {
+    if (!dateVal) return '—';
+    try {
+      const d = new Date(dateVal);
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return String(dateVal);
+    }
+  };
+
+  const evidenceList = complaint.evidence || [];
 
   return (
-    <div className="animated">
-      
-      {/* Detail Header bar */}
-      <div className="page-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <button className="btn" onClick={onBack} style={{ padding: '8px 16px', backgroundColor: '#E2E8F0', color: '#0F172A', marginBottom: '16px' }}>
-            <i className="fa-solid fa-arrow-left"></i> Back to Dashboard
+    <div className="complaint-details-view">
+      {/* 1. Header Navigation & Case Banner */}
+      <header className="gov-case-header">
+        <div className="gov-back-nav">
+          <button className="gov-btn gov-btn-outline gov-btn-sm" onClick={onBack}>
+            <i className="fa-solid fa-arrow-left"></i> Back to Complaints Register
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <h2 className="page-title">{complaint.id}</h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div>
-                {complaint.status === 'Submitted' && <span className="badge badge-submitted">Submitted</span>}
-                {complaint.status === 'Assigned' && <span className="badge badge-assigned">Assigned</span>}
-                {complaint.status === 'Investigation' && <span className="badge badge-investigation">Investigation</span>}
-                {complaint.status === 'Action Taken' && <span className="badge badge-action">Action Taken</span>}
-                {complaint.status === 'Closed' && <span className="badge badge-closed">Closed</span>}
-              </div>
-              <div>
-                {priority === 'Critical' && <span className="badge badge-priority-critical">Critical Priority</span>}
-                {priority === 'High' && <span className="badge badge-priority-high">High Priority</span>}
-                {priority === 'Medium' && <span className="badge badge-priority-medium">Medium Priority</span>}
-                {priority === 'Low' && <span className="badge badge-priority-low">Low Priority</span>}
-              </div>
-            </div>
-          </div>
-
-          <p className="page-subtitle">Category: {getCategoryLabel(complaint.category)} • Submitted on {formattedDate(complaint.createdAt)}</p>
         </div>
-      </div>
 
-      {/* Grid Layout splits details and actions */}
-      <div className="details-layout">
-        
-        {/* Left main: Details, Evidence, Location */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Main Info */}
-          <div className="dashboard-card detail-section">
-            <h3 className="card-title" style={{ marginBottom: '18px' }}><i className="fa-solid fa-file-invoice" style={{ marginRight: '8px', color: '#3C6382' }}></i> Grievance Statement</h3>
-            
-            <div className="grid-2">
-              <div className="info-item">
-                <div className="info-label">Citizen Name</div>
-                <div className="info-value">{complaint.name || 'Anonymous'}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">Contact Number</div>
-                <div className="info-value">+91 {complaint.mobile}</div>
-              </div>
-            </div>
-
-            <div className="info-item" style={{ marginTop: '10px' }}>
-              <div className="info-label">Grievance Subject</div>
-              <div className="info-value" style={{ fontSize: '16px', color: '#0A3D62' }}>{complaint.title}</div>
-            </div>
-
-            <div className="info-item" style={{ marginTop: '16px' }}>
-              <div className="info-label">Detailed Description</div>
-              <div className="info-value" style={{ 
-                fontWeight: '500', 
-                backgroundColor: '#F8FAFC', 
-                padding: '16px', 
-                borderRadius: '10px', 
-                border: '1px solid #E2E8F0',
-                lineHeight: '1.6',
-                whiteSpace: 'pre-line'
-              }}>
-                {complaint.description}
-              </div>
-            </div>
+        <div className="gov-case-title-row">
+          <div className="gov-case-id-group">
+            <span className="gov-case-ref-id">{complaint.id}</span>
+            <button
+              className="gov-copy-btn"
+              onClick={handleCopyId}
+              title="Copy Reference ID to clipboard"
+            >
+              <i className={`fa-solid ${copied ? 'fa-check' : 'fa-copy'}`}></i>
+              {copied ? 'Copied' : 'Copy ID'}
+            </button>
+            <span
+              className={`gov-badge ${
+                complaint.priority === 'Critical'
+                  ? 'gov-badge-critical'
+                  : complaint.priority === 'High'
+                  ? 'gov-badge-warning'
+                  : 'gov-badge-info'
+              }`}
+            >
+              {complaint.priority || 'Low'} Priority
+            </span>
+            <span
+              className={`gov-badge ${
+                complaint.status === 'Closed' ? 'gov-badge-success' : 'gov-badge-neutral'
+              }`}
+            >
+              {complaint.status || 'Submitted'}
+            </span>
           </div>
 
-          {/* Evidence Photos */}
-          <div className="dashboard-card detail-section">
-            <h3 className="card-title" style={{ marginBottom: '18px' }}><i className="fa-solid fa-images" style={{ marginRight: '8px', color: '#3C6382' }}></i> Uploaded Evidence</h3>
-            {complaint.evidence && complaint.evidence.length > 0 ? (
-              <div>
-                <p style={{ fontSize: '13px', color: '#64748B', fontWeight: '500', marginBottom: '10px' }}>Citizen attached {complaint.evidence.length} image(s):</p>
-                <div className="evidence-gallery">
-                  {complaint.evidence.map((uri, i) => (
-                    <img 
-                      key={i} 
-                      src={uri} 
-                      alt={`Evidence ${i + 1}`} 
-                      className="evidence-img" 
-                      onClick={() => window.open(uri, '_blank')}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={{ color: '#94A3B8', fontSize: '14px', fontWeight: '500', padding: '10px 0' }}>
-                No evidence photos were uploaded with this complaint.
-              </div>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className="gov-btn gov-btn-outline gov-btn-sm"
+              onClick={() => window.print()}
+              title="Print formal case summary"
+            >
+              <i className="fa-solid fa-print"></i> Print Summary
+            </button>
           </div>
+        </div>
 
-          {/* Location Capture */}
-          <div className="dashboard-card detail-section">
-            <h3 className="card-title" style={{ marginBottom: '18px' }}><i className="fa-solid fa-map-location-dot" style={{ marginRight: '8px', color: '#3C6382' }}></i> Incident Address</h3>
-            {complaint.location ? (
+        {/* SLA Alert Banner if Critical or Overdue */}
+        {slaStatus.isOverdue && (
+          <div className="gov-sla-alert-banner">
+            <div className="gov-sla-alert-text">
+              <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '18px' }}></i>
+              <span>{slaStatus.label} — Immediate administrative escalation required.</span>
+            </div>
+            <span
+              className="gov-badge gov-badge-critical"
+              style={{ backgroundColor: '#DC2626', color: '#FFFFFF', borderColor: '#DC2626' }}
+            >
+              OVERDUE CASE
+            </span>
+          </div>
+        )}
+      </header>
+
+      {/* 2. Main Two-Column Investigation Layout */}
+      <div className="gov-details-grid">
+        {/* LEFT COLUMN: Grievance Documentation, Evidence, Location */}
+        <div className="gov-section-column">
+          {/* Card: Case Statement & Citizen Particulars */}
+          <section className="gov-card" aria-label="Grievance Statement">
+            <div className="gov-card-header">
               <div>
-                <div className="info-value" style={{ fontSize: '15px', color: '#334155' }}>
-                  <i className="fa-solid fa-location-dot" style={{ color: '#EF4444', marginRight: '8px' }}></i>
-                  {complaint.location.address}
+                <h3 className="gov-card-title">
+                  <i className="fa-solid fa-file-lines" style={{ marginRight: '8px', color: 'var(--gov-secondary)' }}></i>
+                  Grievance Statement & Particulars
+                </h3>
+                <p className="gov-card-subtitle">Verified details submitted by complainant</p>
+              </div>
+              <span className="gov-badge gov-badge-info">
+                Sector: {complaint.category ? complaint.category.toUpperCase() : 'GENERAL'}
+              </span>
+            </div>
+
+            <div className="gov-card-body">
+              <div className="gov-prop-grid">
+                <div className="gov-prop-item">
+                  <span className="gov-prop-label">Complainant Name</span>
+                  <span className="gov-prop-value">{complaint.name || 'Anonymous Citizen'}</span>
                 </div>
-                {complaint.location.latitude && (
-                  <div className="location-map-box">
-                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748B', display: 'block' }}>GPS GEOLOCATION</span>
-                    <div className="location-coord-row">
-                      <span>Latitude: {complaint.location.latitude.toFixed(6)}</span>
-                      <span>Longitude: {complaint.location.longitude.toFixed(6)}</span>
+                <div className="gov-prop-item">
+                  <span className="gov-prop-label">Verified Mobile Number</span>
+                  <span className="gov-prop-value">
+                    {complaint.mobile ? (
+                      <a
+                        href={`tel:${complaint.mobile}`}
+                        style={{ color: 'var(--gov-secondary)', textDecoration: 'none' }}
+                      >
+                        +91 {complaint.mobile}
+                      </a>
+                    ) : (
+                      'Not provided'
+                    )}
+                  </span>
+                </div>
+                <div className="gov-prop-item">
+                  <span className="gov-prop-label">Date Lodged</span>
+                  <span className="gov-prop-value">
+                    {formattedDate(complaint.createdAt || complaint.created_at)}
+                  </span>
+                </div>
+                <div className="gov-prop-item">
+                  <span className="gov-prop-label">SLA Compliance Status</span>
+                  <span
+                    className="gov-prop-value"
+                    style={{
+                      color: slaStatus.isOverdue ? 'var(--gov-critical)' : 'var(--gov-success)',
+                    }}
+                  >
+                    {slaStatus.label}
+                  </span>
+                </div>
+              </div>
+
+              <div className="gov-prop-item" style={{ marginTop: '12px' }}>
+                <span className="gov-prop-label">Subject / Allegation</span>
+                <span className="gov-prop-value" style={{ fontSize: '15px', color: 'var(--gov-primary)' }}>
+                  {complaint.title}
+                </span>
+              </div>
+
+              <div className="gov-prop-item" style={{ marginTop: '14px' }}>
+                <span className="gov-prop-label">Detailed Incident Narration</span>
+                <div className="gov-narrative-box">{complaint.description}</div>
+              </div>
+            </div>
+          </section>
+
+          {/* Card: Uploaded Evidence Vault */}
+          <section className="gov-card" aria-label="Evidence Vault">
+            <div className="gov-card-header">
+              <div>
+                <h3 className="gov-card-title">
+                  <i className="fa-solid fa-camera" style={{ marginRight: '8px', color: 'var(--gov-secondary)' }}></i>
+                  Evidence Vault & Documentation
+                </h3>
+                <p className="gov-card-subtitle">
+                  {evidenceList.length} photographic proof attachment(s)
+                </p>
+              </div>
+            </div>
+
+            <div className="gov-card-body">
+              {evidenceList.length > 0 ? (
+                <div className="gov-evidence-grid">
+                  {evidenceList.map((uri, idx) => (
+                    <div
+                      key={idx}
+                      className="gov-evidence-thumb-wrap"
+                      onClick={() => setLightboxIndex(idx)}
+                      title={`Click to inspect Evidence #${idx + 1}`}
+                    >
+                      <img src={uri} alt={`Evidence #${idx + 1}`} className="gov-evidence-thumb" />
+                      <div className="gov-thumb-overlay">
+                        <i className="fa-solid fa-magnifying-glass-plus"></i>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ color: '#94A3B8', fontSize: '14px', fontWeight: '500', padding: '10px 0' }}>
-                No specific incident location details provided.
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Right side: Actions, Timeline, Notes */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Action Center */}
-          <div className="dashboard-card detail-section" style={{ backgroundColor: '#F8FAFC' }}>
-            <h3 className="card-title" style={{ marginBottom: '18px', color: '#0A3D62' }}><i className="fa-solid fa-user-gear" style={{ marginRight: '8px' }}></i> Action Center</h3>
-            
-            {/* Status change dropdown */}
-            <div className="form-group">
-              <label className="form-label">Update Case Status</label>
-              <select
-                className="input-field"
-                value={status}
-                onChange={handleStatusChange}
-                style={{ backgroundColor: 'white', fontWeight: '700' }}
-              >
-                <option value="Submitted">Submitted (Pending Review)</option>
-                <option value="Assigned">Assigned (Officer Appointed)</option>
-                <option value="Investigation">Investigation (In Progress)</option>
-                <option value="Action Taken">Action Taken (Corrective Enforcement)</option>
-                <option value="Closed">Closed (Resolved)</option>
-              </select>
-            </div>
-
-            {/* Priority Selector */}
-            <div className="form-group" style={{ marginTop: '16px' }}>
-              <label className="form-label">Update Priority Level</label>
-              <select
-                className="input-field"
-                value={priority}
-                onChange={handlePriorityChange}
-                style={{ backgroundColor: 'white', fontWeight: '700' }}
-              >
-                <option value="Low">Low Priority</option>
-                <option value="Medium">Medium Priority</option>
-                <option value="High">High Priority</option>
-                <option value="Critical">Critical Priority</option>
-              </select>
-            </div>
-
-            <div className="section-divider"></div>
-
-            {/* Officer Assignment */}
-            <form onSubmit={handleAssignOfficer} className="form-group" style={{ marginBottom: '0' }}>
-              <label className="form-label">Assigned FDA Inspector</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  className="select-filter"
-                  value={officerName}
-                  onChange={(e) => setOfficerName(e.target.value)}
-                  style={{ backgroundColor: 'white', height: '40px', flex: 1 }}
-                  required
-                >
-                  <option value="">Select Inspector...</option>
-                  {officers.map(o => (
-                    <option key={o.id} value={o.name}>{o.name} ({o.district})</option>
                   ))}
-                </select>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0 16px', height: '40px', fontSize: '13px' }}>
-                  Assign
-                </button>
-              </div>
-              {complaint.assignedOfficer && (
-                <div style={{ fontSize: '12px', color: '#047857', fontWeight: '700', marginTop: '6px' }}>
-                  <i className="fa-solid fa-circle-check"></i> Actively assigned to {complaint.assignedOfficer}
+                </div>
+              ) : (
+                <div className="gov-empty-state" style={{ padding: '24px' }}>
+                  <i className="fa-solid fa-image" style={{ fontSize: '28px', color: 'var(--gov-text-muted)', marginBottom: '8px' }}></i>
+                  <p style={{ margin: 0, fontSize: '13px' }}>
+                    No photographic evidence attachments were submitted with this complaint.
+                  </p>
                 </div>
               )}
-            </form>
-          </div>
+            </div>
+          </section>
 
+          {/* Card: Incident Location & Regional Jurisdiction */}
+          <section className="gov-card" aria-label="Incident Location">
+            <div className="gov-card-header">
+              <div>
+                <h3 className="gov-card-title">
+                  <i className="fa-solid fa-map-pin" style={{ marginRight: '8px', color: 'var(--gov-secondary)' }}></i>
+                  Incident Location & Jurisdiction
+                </h3>
+                <p className="gov-card-subtitle">Geographic coordinates & local administrative zone</p>
+              </div>
+            </div>
 
-          {/* Stepper Timeline */}
-          <div className="dashboard-card detail-section">
-            <h3 className="card-title" style={{ marginBottom: '18px' }}><i className="fa-solid fa-route" style={{ marginRight: '8px', color: '#3C6382' }}></i> Case Timeline</h3>
-            <div className="timeline-flow">
-              {timelineSteps.map((step, index) => {
-                const isCompleted = index < activeIndex;
-                const isActive = index === activeIndex;
-                
-                let stepClass = '';
-                if (isCompleted) stepClass = 'completed';
-                if (isActive) stepClass = 'active';
+            <div className="gov-card-body">
+              <div className="gov-prop-grid">
+                <div className="gov-prop-item">
+                  <span className="gov-prop-label">Administrative District</span>
+                  <span className="gov-prop-value">
+                    {complaint.district_name || 'Maharashtra State'}
+                  </span>
+                </div>
+                <div className="gov-prop-item">
+                  <span className="gov-prop-label">Taluka / Sub-Division</span>
+                  <span className="gov-prop-value">{complaint.taluka_name || 'Regional Zone'}</span>
+                </div>
+              </div>
 
-                return (
-                  <div key={step.key} className={`timeline-step ${stepClass}`}>
-                    <div className="timeline-dot"></div>
-                    <div className="timeline-details">
-                      <div className="timeline-title">{step.label}</div>
-                      <div className="timeline-date" style={{ fontSize: '11px', color: '#94A3B8' }}>{step.desc}</div>
+              <div className="gov-prop-item" style={{ marginTop: '8px' }}>
+                <span className="gov-prop-label">Premises Address</span>
+                <span className="gov-prop-value" style={{ fontWeight: '500', color: 'var(--gov-text)' }}>
+                  {complaint.location?.address || 'No specific street address provided'}
+                </span>
+              </div>
+
+              {complaint.location?.latitude && complaint.location?.longitude && (
+                <div
+                  style={{
+                    marginTop: '14px',
+                    padding: '12px',
+                    backgroundColor: '#F8FAFC',
+                    borderRadius: 'var(--gov-radius-md)',
+                    border: '1px solid var(--gov-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                  }}
+                >
+                  <div>
+                    <span className="gov-prop-label">GPS Geolocation Coordinates</span>
+                    <div style={{ fontFamily: 'var(--gov-font-mono)', fontSize: '13px', fontWeight: '600' }}>
+                      Lat: {Number(complaint.location.latitude).toFixed(6)} | Long:{' '}
+                      {Number(complaint.location.longitude).toFixed(6)}
                     </div>
                   </div>
-                );
-              })}
+                  <a
+                    className="gov-btn gov-btn-outline gov-btn-sm"
+                    href={`https://www.google.com/maps?q=${complaint.location.latitude},${complaint.location.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <i className="fa-solid fa-arrow-up-right-from-square"></i> Open in Maps
+                  </a>
+                </div>
+              )}
             </div>
-          </div>
+          </section>
+        </div>
 
-          {/* Internal Officer Notes */}
-          <div className="dashboard-card detail-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 className="card-title" style={{ margin: '0' }}><i className="fa-solid fa-note-sticky" style={{ marginRight: '8px', color: '#3C6382' }}></i> Case Notes</h3>
-              <button 
-                className="btn" 
+        {/* RIGHT COLUMN: Investigation Workspace & Chronology */}
+        <div className="gov-section-column">
+          {/* Card: Investigation Control Center */}
+          <section className="gov-card" aria-label="Investigation Control Center">
+            <div className="gov-card-header">
+              <div>
+                <h3 className="gov-card-title">
+                  <i className="fa-solid fa-sliders" style={{ marginRight: '8px', color: 'var(--gov-secondary)' }}></i>
+                  Investigation Workspace
+                </h3>
+                <p className="gov-card-subtitle">Official actions, triage priority & inspector assignment</p>
+              </div>
+              {savingAction && (
+                <span style={{ fontSize: '11px', color: 'var(--gov-secondary)', fontWeight: '600' }}>
+                  <i className="fa-solid fa-spinner fa-spin"></i> Saving...
+                </span>
+              )}
+            </div>
+
+            <div className="gov-card-body">
+              {/* Status Selector */}
+              <div className="gov-form-group">
+                <label className="gov-label">Update Case Workflow Status</label>
+                <select
+                  className="gov-select"
+                  value={status}
+                  onChange={handleStatusChange}
+                  style={{ fontWeight: '600' }}
+                >
+                  <option value="Submitted">Submitted (Pending Review)</option>
+                  <option value="Assigned">Assigned (Officer Appointed)</option>
+                  <option value="Investigation">Investigation (In Progress)</option>
+                  <option value="Action Taken">Action Taken (Corrective Enforcement)</option>
+                  <option value="Closed">Closed (Resolved & Verified)</option>
+                </select>
+              </div>
+
+              {/* Priority Selector */}
+              <div className="gov-form-group">
+                <label className="gov-label">Update Triage Priority</label>
+                <select
+                  className="gov-select"
+                  value={priority}
+                  onChange={handlePriorityChange}
+                  style={{ fontWeight: '600' }}
+                >
+                  <option value="Low">Low Priority (Routine inspection)</option>
+                  <option value="Medium">Medium Priority (Standard grievance)</option>
+                  <option value="High">High Priority (Urgent sampling required)</option>
+                  <option value="Critical">Critical Priority (Immediate public health hazard)</option>
+                </select>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid var(--gov-border)', margin: '16px 0' }} />
+
+              {/* Officer Assignment Form */}
+              <form onSubmit={handleAssignOfficer}>
+                <div className="gov-form-group" style={{ marginBottom: '8px' }}>
+                  <label className="gov-label">Assigned Food & Drug Inspector</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="gov-select"
+                      value={officerName}
+                      onChange={(e) => setOfficerName(e.target.value)}
+                      required
+                    >
+                      <option value="">Select Inspector from directory...</option>
+                      {officers.map((o) => (
+                        <option key={o.id} value={o.name}>
+                          {o.name} ({o.role} • {o.district})
+                        </option>
+                      ))}
+                    </select>
+                    <button type="submit" className="gov-btn gov-btn-secondary gov-btn-sm">
+                      Assign
+                    </button>
+                  </div>
+                </div>
+
+                {complaint.assignedOfficer ? (
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      color: 'var(--gov-success)',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <i className="fa-solid fa-circle-check"></i> Actively assigned to {complaint.assignedOfficer}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: 'var(--gov-warning)', fontWeight: '600' }}>
+                    <i className="fa-solid fa-circle-exclamation"></i> Unassigned — Please assign a designated inspector.
+                  </div>
+                )}
+              </form>
+            </div>
+          </section>
+
+          {/* Card: Multi-Stage Workflow Progress Stepper */}
+          <section className="gov-card" aria-label="Lifecycle Stepper">
+            <div className="gov-card-header">
+              <h3 className="gov-card-title">
+                <i className="fa-solid fa-timeline" style={{ marginRight: '8px', color: 'var(--gov-secondary)' }}></i>
+                Investigation Lifecycle
+              </h3>
+            </div>
+
+            <div className="gov-card-body">
+              <div className="gov-timeline-progress">
+                {timelineSteps.map((step, idx) => {
+                  const isCompleted = idx < activeStepIndex;
+                  const isActive = idx === activeStepIndex;
+                  return (
+                    <div
+                      key={step.key}
+                      className={`gov-timeline-item ${isCompleted ? 'completed' : ''} ${
+                        isActive ? 'active' : ''
+                      }`}
+                    >
+                      <div className="gov-timeline-icon">
+                        {isCompleted ? (
+                          <i className="fa-solid fa-check"></i>
+                        ) : (
+                          <span>{idx + 1}</span>
+                        )}
+                      </div>
+                      <div className="gov-timeline-body">
+                        <div className="gov-timeline-title">{step.label}</div>
+                        <div className="gov-timeline-desc">{step.desc}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* Card: Chronological Activity Timeline & Case Notes */}
+          <section className="gov-card" aria-label="Case Notes & Activity">
+            <div className="gov-card-header">
+              <div>
+                <h3 className="gov-card-title">
+                  <i className="fa-solid fa-comments" style={{ marginRight: '8px', color: 'var(--gov-secondary)' }}></i>
+                  Activity History & Notes
+                </h3>
+                <p className="gov-card-subtitle">
+                  Chronological trail of notes, inspections & system actions
+                </p>
+              </div>
+              <button
+                className="gov-btn gov-btn-outline gov-btn-sm"
                 onClick={() => setShowNotesForm(!showNotesForm)}
-                style={{
-                  padding: '4px 10px', 
-                  fontSize: '11px', 
-                  backgroundColor: '#EBF3F9', 
-                  color: '#0A3D62', 
-                  border: '1px solid #D0E2EF',
-                  fontWeight: '700'
-                }}
               >
-                {showNotesForm ? 'Cancel' : '+ Add Note'}
+                <i className={`fa-solid ${showNotesForm ? 'fa-xmark' : 'fa-plus'}`}></i>
+                {showNotesForm ? 'Cancel' : 'Add Note'}
               </button>
             </div>
 
-            {/* Note form toggle */}
-            {showNotesForm && (
-              <form onSubmit={handleAddNote} style={{ marginBottom: '18px', animation: 'fadeIn 0.2s' }}>
-                <textarea
-                  className="input-field"
-                  placeholder="Type official comment or audit update notes..."
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  style={{ minHeight: '80px', fontSize: '13px', backgroundColor: '#F8FAFC', resize: 'vertical', marginBottom: '8px' }}
-                  required
-                />
-                <button type="submit" className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '12px', height: '32px' }}>
-                  Save Note
-                </button>
-              </form>
-            )}
-
-            {/* Notes registry list */}
-            <div className="notes-container">
-              {complaint.notes && complaint.notes.length > 0 ? (
-                complaint.notes.map((note) => (
-                  <div key={note.id} className="note-card">
-                    <div className="note-header">
-                      <span className="note-author">{note.author}</span>
-                      <span>{formattedDate(note.timestamp)}</span>
-                    </div>
-                    <p className="note-comment">{note.comment}</p>
+            <div className="gov-card-body">
+              {/* Note Submission Form */}
+              {showNotesForm && (
+                <form
+                  onSubmit={handleAddNote}
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    padding: '12px',
+                    borderRadius: 'var(--gov-radius-md)',
+                    border: '1px solid var(--gov-border)',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div className="gov-form-group" style={{ marginBottom: '8px' }}>
+                    <label className="gov-label">New Official Investigation Note</label>
+                    <textarea
+                      className="gov-textarea"
+                      placeholder="Enter field observation, lab sample analysis, or enforcement remarks..."
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      required
+                    ></textarea>
                   </div>
-                ))
-              ) : (
-                <div style={{ color: '#94A3B8', fontSize: '12px', fontWeight: '500', padding: '10px 0', textAlign: 'center' }}>
-                  No internal notes logged on this case yet.
-                </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="gov-btn gov-btn-outline gov-btn-sm"
+                      onClick={() => setShowNotesForm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="gov-btn gov-btn-primary gov-btn-sm">
+                      <i className="fa-solid fa-floppy-disk"></i> Save Entry
+                    </button>
+                  </div>
+                </form>
               )}
-            </div>
-          </div>
 
-          {/* Audit Logs and Escalations Card */}
-          <div className="dashboard-card detail-section">
-            <h3 className="card-title" style={{ marginBottom: '18px' }}><i className="fa-solid fa-clock-rotate-left" style={{ marginRight: '8px', color: '#3C6382' }}></i> System Logs & Escalations</h3>
-            
-            {/* Escalations Section */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#0A3D62', marginBottom: '8px' }}>Escalation Events ({escalations.length})</div>
-              {escalations.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {escalations.map((esc) => (
-                    <div key={esc.id} style={{ padding: '10px', backgroundColor: '#FFF5F5', borderLeft: '3px solid #EF4444', borderRadius: '6px', fontSize: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', color: '#B91C1C', marginBottom: '4px' }}>
-                        <span>Escalated to: {esc.escalated_to}</span>
-                        <span>{formattedDate(esc.escalated_at)}</span>
-                      </div>
-                      <div style={{ color: '#7F1D1D' }}>From: {esc.escalated_from}</div>
-                      <div style={{ color: '#451A03', marginTop: '2px', fontStyle: 'italic' }}>Reason: {esc.reason}</div>
+              {/* Unified Activity Stream */}
+              <div className="gov-activity-stream">
+                {/* 1. Official Notes */}
+                {(complaint.notes || []).map((note) => (
+                  <div key={note.id} className="gov-activity-entry">
+                    <div className="gov-activity-header">
+                      <span className="gov-activity-author">
+                        <i className="fa-solid fa-user-shield" style={{ marginRight: '6px' }}></i>
+                        {note.author}
+                      </span>
+                      <span className="gov-activity-time">{formattedDate(note.timestamp)}</span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic' }}>No escalations logged.</div>
-              )}
-            </div>
+                    <p className="gov-activity-content">{note.comment}</p>
+                  </div>
+                ))}
 
-            <div className="section-divider"></div>
-
-            {/* Audit Logs Section */}
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#0A3D62', marginBottom: '8px' }}>Grievance Audit Trail ({audits.length})</div>
-              {audits.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {audits.map((audit) => (
-                    <div key={audit.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748B', borderBottom: '1px solid #F1F5F9', paddingBottom: '6px' }}>
-                      <div>
-                        <span style={{ fontWeight: '700', color: '#0F172A' }}>{audit.action}</span>
-                        <span style={{ marginLeft: '6px', color: '#94A3B8' }}>by {audit.user_id}</span>
-                      </div>
-                      <div>{formattedDate(audit.timestamp)}</div>
+                {/* 2. Escalation Events */}
+                {escalations.map((esc) => (
+                  <div
+                    key={esc.id}
+                    className="gov-activity-entry"
+                    style={{ borderColor: '#FECACA', backgroundColor: '#FEF2F2' }}
+                  >
+                    <div className="gov-activity-header">
+                      <span className="gov-activity-author" style={{ color: 'var(--gov-critical)' }}>
+                        <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '6px' }}></i>
+                        Automatic Escalation: {esc.escalated_to}
+                      </span>
+                      <span className="gov-activity-time">{formattedDate(esc.escalated_at)}</span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic' }}>No audit trails recorded.</div>
-              )}
-            </div>
-          </div>
+                    <p className="gov-activity-content" style={{ color: '#991B1B' }}>
+                      <strong>Reason:</strong> {esc.reason} (Escalated from: {esc.escalated_from})
+                    </p>
+                  </div>
+                ))}
 
+                {/* 3. System Audits */}
+                {audits.map((audit) => (
+                  <div key={audit.id} className="gov-activity-entry">
+                    <div className="gov-activity-header">
+                      <span className="gov-audit-badge">{audit.action}</span>
+                      <span className="gov-activity-time">{formattedDate(audit.timestamp)}</span>
+                    </div>
+                    <p className="gov-activity-content" style={{ color: 'var(--gov-text-secondary)', fontSize: '12px' }}>
+                      Initiated by <strong>{audit.user_id}</strong>
+                    </p>
+                  </div>
+                ))}
+
+                {/* Empty State */}
+                {!complaint.notes?.length && !escalations.length && !audits.length && (
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--gov-text-muted)', fontSize: '13px' }}>
+                    No investigation notes or audit actions recorded yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
-
       </div>
+
+      {/* 3. Interactive Evidence Lightbox Dialog */}
+      {lightboxIndex !== null && evidenceList[lightboxIndex] && (
+        <div className="gov-lightbox-overlay" onClick={() => setLightboxIndex(null)}>
+          <div className="gov-lightbox-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="gov-lightbox-header">
+              <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--gov-text)' }}>
+                Evidence Photo #{lightboxIndex + 1} of {evidenceList.length}
+              </span>
+              <button
+                className="gov-copy-btn"
+                onClick={() => setLightboxIndex(null)}
+                aria-label="Close Lightbox"
+              >
+                <i className="fa-solid fa-xmark"></i> Close
+              </button>
+            </div>
+
+            <div className="gov-lightbox-body">
+              <img
+                src={evidenceList[lightboxIndex]}
+                alt={`Evidence #${lightboxIndex + 1}`}
+                className="gov-lightbox-img"
+              />
+            </div>
+
+            <div className="gov-lightbox-footer">
+              <button
+                className="gov-btn gov-btn-outline gov-btn-sm"
+                disabled={lightboxIndex === 0}
+                onClick={() => setLightboxIndex((idx) => Math.max(0, idx - 1))}
+              >
+                <i className="fa-solid fa-chevron-left"></i> Previous
+              </button>
+
+              <a
+                className="gov-btn gov-btn-outline gov-btn-sm"
+                href={evidenceList[lightboxIndex]}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <i className="fa-solid fa-up-right-from-square"></i> Open High-Res
+              </a>
+
+              <button
+                className="gov-btn gov-btn-outline gov-btn-sm"
+                disabled={lightboxIndex === evidenceList.length - 1}
+                onClick={() => setLightboxIndex((idx) => Math.min(evidenceList.length - 1, idx + 1))}
+              >
+                Next <i className="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

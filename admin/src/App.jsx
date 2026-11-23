@@ -105,13 +105,13 @@ export default function App() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const res = await fetch(`${MOCK_SERVER_URL}/api/complaints`, { headers });
+      const res = await fetch(`${MOCK_SERVER_URL}/api/complaints/`, { headers });
       if (res.ok) {
         let list = await res.json();
         // If server is empty, initialize it with mock data
         if (list.length === 0) {
           for (const item of INITIAL_MOCK_COMPLAINTS) {
-            await fetch(`${MOCK_SERVER_URL}/api/complaints`, {
+            await fetch(`${MOCK_SERVER_URL}/api/complaints/`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ export default function App() {
             });
           }
           // Re-fetch
-          const reloadRes = await fetch(`${MOCK_SERVER_URL}/api/complaints`, { headers });
+          const reloadRes = await fetch(`${MOCK_SERVER_URL}/api/complaints/`, { headers });
           list = await reloadRes.json();
         }
         setComplaints(list);
@@ -175,7 +175,7 @@ export default function App() {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       };
       
-      const res = await fetch(`${MOCK_SERVER_URL}/api/complaints/${updatedComplaint.id}`, {
+      const res = await fetch(`${MOCK_SERVER_URL}/api/complaints/${updatedComplaint.id}/`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(updatedComplaint)
@@ -184,7 +184,7 @@ export default function App() {
         console.log('Successfully synced complaint with server');
         setSyncStatus('online');
         // Refresh local memory in case server generated notifications, etc.
-        const listRes = await fetch(`${MOCK_SERVER_URL}/api/complaints`, {
+        const listRes = await fetch(`${MOCK_SERVER_URL}/api/complaints/`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         if (listRes.ok) {
@@ -316,6 +316,7 @@ export default function App() {
           <AdminDashboard 
             complaints={complaints}
             onSelectComplaint={(id) => setSelectedComplaintId(id)}
+            onRefresh={fetchComplaints}
           />
         ) : activeTab === 'officers' ? (
           <OfficerManager />

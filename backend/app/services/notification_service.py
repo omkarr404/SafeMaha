@@ -29,7 +29,7 @@ def create_status_notification(db: Session, complaint_id: str, status: str, mobi
     elif status == "Investigation":
         title_en = "Investigation Started"
         desc_en = f"Officer is investigating the incident details for complaint {complaint_id}."
-        title_mr = "तпас सुरू"
+        title_mr = "तपास सुरू"
         desc_mr = f"अधिकारी तक्रार {complaint_id} च्या घटनास्थळाची आणि तपशीलांची तपासणी करत आहेत."
     elif status == "Action Taken":
         title_en = "Action Taken"

@@ -19,6 +19,7 @@ import SafetyEducationScreen from '../screens/SafetyEducationScreen';
 import ArticleDetailScreen from '../screens/ArticleDetailScreen';
 import CitizenProfileScreen from '../screens/CitizenProfileScreen';
 import { useLanguage } from '../context/LanguageContext';
+import { colors } from '../constants/theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,7 +31,7 @@ export default function AppNavigator() {
       initialRouteName="Splash"
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#0A3D62', // Government Primary Blue
+          backgroundColor: colors.primary, // Official FDA Navy Blue (#142B4A)
         },
         headerTintColor: '#FFFFFF',
         headerTitleStyle: {
@@ -38,7 +39,7 @@ export default function AppNavigator() {
           fontSize: 18,
         },
         headerTitleAlign: 'center',
-        animation: 'slide_from_right', // Smooth transition
+        animation: 'slide_from_right',
       }}
     >
       {/* Splash Screen */}

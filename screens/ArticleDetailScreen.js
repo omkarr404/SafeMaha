@@ -10,14 +10,13 @@ import {
   Image, 
   ActivityIndicator, 
   StatusBar,
-  Dimensions
+  TouchableOpacity
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { getArticleById } from '../services/articleService';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../components/CustomButton';
-
-const { width } = Dimensions.get('window');
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 export default function ArticleDetailScreen({ route, navigation }) {
   const { locale, t } = useLanguage();
@@ -35,18 +34,18 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
   const getCategoryColor = (cat) => {
     switch (cat) {
-      case 'food': return '#38ADA9';
-      case 'drug': return '#0A3D62';
-      case 'cosmetics': return '#E58E26';
-      case 'rights': return '#82589F';
-      default: return '#64748B';
+      case 'food': return colors.secondary;
+      case 'drug': return colors.primary;
+      case 'cosmetics': return colors.warning;
+      case 'rights': return '#7C3AED';
+      default: return colors.textSecondary;
     }
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0A3D62" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -54,14 +53,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
   if (!article) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle-outline" size={56} color={colors.critical} />
         <Text style={styles.errorText}>
-          {locale === 'mr' ? 'लेख आढळला नाही!' : 'Article not found!'}
+          {locale === 'mr' ? 'लेख आढळला नाही!' : 'Advisory Article Not Found'}
         </Text>
         <CustomButton
-          title={locale === 'mr' ? 'मागे जा' : 'Go Back'}
+          title={locale === 'mr' ? 'मागे जा' : 'Return to Education Hub'}
           onPress={() => navigation.goBack()}
-          style={styles.errorBtn}
+          variant="outline"
+          style={{ width: 200, marginTop: 16 }}
         />
       </View>
     );
@@ -72,7 +72,6 @@ export default function ArticleDetailScreen({ route, navigation }) {
   const categoryLabel = t(`safetyEducation.categories.${article.category}`);
   const color = getCategoryColor(article.category);
 
-  // Custom block rendering component
   const renderBlock = (block, index) => {
     switch (block.type) {
       case 'heading':
@@ -91,7 +90,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       case 'bullet':
         return (
           <View key={index} style={styles.bulletRow}>
-            <Ionicons name="checkmark-circle" size={18} color={color} style={styles.bulletIcon} />
+            <Ionicons name="checkmark-circle" size={16} color={color} style={styles.bulletIcon} />
             <Text style={styles.bulletText}>{block.text}</Text>
           </View>
         );
@@ -102,30 +101,50 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
-        {/* Banner Display */}
-        <Image source={{ uri: article.banner }} style={styles.bannerImage} />
-        
-        {/* Article Details Container */}
-        <View style={styles.contentCard}>
-          <View style={styles.headerInfo}>
-            <View style={[styles.categoryBadge, { backgroundColor: color + '15' }]}>
-              <Text style={[styles.categoryBadgeText, { color }]}>{categoryLabel}</Text>
-            </View>
-            <Text style={styles.dateText}>
-              {t('safetyEducation.publishedOn')}: {locale === 'mr' ? '६ जून, २०२६' : 'June 6, 2026'}
-            </Text>
+        {/* Hero Cover Image */}
+        {article.thumbnail && (
+          <Image source={{ uri: article.thumbnail }} style={styles.heroImage} />
+        )}
+
+        <View style={styles.contentWrap}>
+          {/* Category Chip */}
+          <View style={[styles.badge, { backgroundColor: color + '15' }]}>
+            <Text style={[styles.badgeText, { color }]}>{categoryLabel}</Text>
           </View>
 
-          <Text style={styles.titleText}>{titleText}</Text>
-
+          {/* Article Title */}
+          <Text style={styles.articleTitle}>{titleText}</Text>
+          
           <View style={styles.divider} />
 
-          {/* Render content blocks */}
-          <View style={styles.bodyContainer}>
-            {contentBlocks.map((block, index) => renderBlock(block, index))}
+          {/* Dynamic Content Blocks */}
+          <View style={styles.blocksContainer}>
+            {contentBlocks.map((block, idx) => renderBlock(block, idx))}
+          </View>
+
+          {/* Official FDA Advice Footer */}
+          <View style={styles.fdaNoticeCard}>
+            <Ionicons name="shield-checkmark" size={20} color={colors.primary} style={{ marginRight: 8, marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.noticeTitle}>Food & Drug Administration Notice</Text>
+              <Text style={styles.noticeDesc}>
+                {locale === 'mr' 
+                  ? 'अन्न अथवा औषधातील संशयास्पद भेसळ आढळल्यास त्वरित सेफमहा अ‍ॅपवर तक्रार नोंदवा किंवा टोल-फ्री क्रमांक 1800-222-365 वर संपर्क साधा.'
+                  : 'If you suspect food adulteration or spurious medicines, report immediately through SafeMaha or call toll-free 1800-222-365.'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ marginTop: spacing.lg }}>
+            <CustomButton
+              title={locale === 'mr' ? 'या विषयावर तक्रार नोंदवा' : 'Report Issue on this Topic'}
+              onPress={() => navigation.navigate('ComplaintForm')}
+              variant="primary"
+              icon={<Ionicons name="alert-circle-outline" size={18} color="#FFFFFF" />}
+            />
           </View>
         </View>
 
@@ -137,129 +156,120 @@ export default function ArticleDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
+  },
+  scrollContainer: {
+    paddingBottom: spacing.xxxl,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
+    padding: spacing.xl,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
-    marginTop: 16,
-    marginBottom: 24,
+    color: colors.text,
+    marginTop: spacing.md,
   },
-  errorBtn: {
-    width: 150,
+  heroImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#E2E8F0',
   },
-  scrollContainer: {
-    paddingBottom: 30,
+  contentWrap: {
+    padding: spacing.lg,
   },
-  bannerImage: {
-    width: width,
-    height: 220,
-    resizeMode: 'cover',
+  badge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.xs,
   },
-  contentCard: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 5,
-    minHeight: 400,
-  },
-  headerInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  categoryBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  categoryBadgeText: {
+  badgeText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     textTransform: 'uppercase',
   },
-  dateText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  titleText: {
-    fontSize: 22,
+  articleTitle: {
+    fontSize: 20,
     fontWeight: '800',
-    color: '#0A3D62',
-    lineHeight: 30,
-    marginBottom: 16,
+    color: colors.text,
+    lineHeight: 26,
+    marginTop: 2,
+    marginBottom: spacing.sm,
   },
   divider: {
-    height: 1.5,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 18,
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
   },
-  bodyContainer: {
-    width: '100%',
+  blocksContainer: {
+    gap: spacing.md,
   },
   headingWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 12,
+    gap: 8,
+    marginTop: spacing.sm,
   },
   accentLine: {
-    width: 4,
-    height: '80%',
+    width: 3.5,
+    height: 18,
     borderRadius: 2,
-    marginRight: 10,
   },
   headingBlock: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
   },
   paragraphBlock: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 22,
-    fontWeight: '500',
-    marginBottom: 14,
-    textAlign: 'justify',
+    fontSize: 13.5,
+    color: colors.text,
+    lineHeight: 20,
   },
   bulletRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 10,
-    paddingLeft: 4,
+    gap: 8,
   },
   bulletIcon: {
-    marginRight: 10,
     marginTop: 2,
   },
   bulletText: {
-    fontSize: 13,
-    color: '#334155',
     flex: 1,
-    lineHeight: 20,
-    fontWeight: '600',
+    fontSize: 13,
+    color: colors.text,
+    lineHeight: 19,
+  },
+  fdaNoticeCard: {
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: spacing.xl,
+  },
+  noticeTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 2,
+  },
+  noticeDesc: {
+    fontSize: 11.5,
+    color: colors.text,
+    lineHeight: 16,
   },
 });

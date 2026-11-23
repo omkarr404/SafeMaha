@@ -1,3 +1,5 @@
+// FILE NAME: d:\Omkar\Water\FDA\screens\LocationScreen.js
+
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -8,10 +10,10 @@ import {
   TextInput, 
   ActivityIndicator, 
   Alert, 
-  StatusBar,
-  Modal,
-  FlatList,
-  TouchableOpacity
+  StatusBar, 
+  Modal, 
+  FlatList, 
+  TouchableOpacity 
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useComplaints } from '../context/ComplaintContext';
@@ -19,7 +21,7 @@ import CustomButton from '../components/CustomButton';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { getDistricts, getTalukas } from '../services/complaintService';
-
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 export default function LocationScreen({ navigation }) {
   const { t, locale } = useLanguage();
@@ -27,7 +29,7 @@ export default function LocationScreen({ navigation }) {
 
   // Local state for address and coordinates
   const [manualAddress, setManualAddress] = useState('');
-  const [coords, setCoords] = useState(null); // { latitude, longitude }
+  const [coords, setCoords] = useState(null);
   const [loadingGps, setLoadingGps] = useState(false);
   const [gpsCaptured, setGpsCaptured] = useState(false);
 
@@ -37,8 +39,9 @@ export default function LocationScreen({ navigation }) {
   const [selectedTaluka, setSelectedTaluka] = useState(null);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
   const [showTalukaModal, setShowTalukaModal] = useState(false);
+  const [districtSearch, setDistrictSearch] = useState('');
+  const [talukaSearch, setTalukaSearch] = useState('');
 
-  // Sync state with draft context on load (for back navigation prefill)
   useEffect(() => {
     async function initLocationData() {
       try {
@@ -50,20 +53,20 @@ export default function LocationScreen({ navigation }) {
           if (draftComplaint.location.latitude && draftComplaint.location.longitude) {
             setCoords({
               latitude: draftComplaint.location.latitude,
-              longitude: draftComplaint.location.longitude
+              longitude: draftComplaint.location.longitude,
             });
             setGpsCaptured(true);
           }
         }
 
         if (draftComplaint.district_id) {
-          const matchedD = list.find(d => d.id === draftComplaint.district_id);
+          const matchedD = list.find((d) => d.id === draftComplaint.district_id);
           if (matchedD) {
             setSelectedDistrict(matchedD);
             const tList = await getTalukas(matchedD.id);
             setTalukas(tList);
             if (draftComplaint.taluka_id) {
-              const matchedT = tList.find(t => t.id === draftComplaint.taluka_id);
+              const matchedT = tList.find((t) => t.id === draftComplaint.taluka_id);
               if (matchedT) {
                 setSelectedTaluka(matchedT);
               }
@@ -81,6 +84,7 @@ export default function LocationScreen({ navigation }) {
     setSelectedDistrict(district);
     setSelectedTaluka(null);
     setShowDistrictModal(false);
+    setDistrictSearch('');
     try {
       const list = await getTalukas(district.id);
       setTalukas(list);
@@ -92,6 +96,7 @@ export default function LocationScreen({ navigation }) {
   const handleSelectTaluka = (taluka) => {
     setSelectedTaluka(taluka);
     setShowTalukaModal(false);
+    setTalukaSearch('');
   };
 
   const handleGetGpsLocation = async () => {
@@ -100,18 +105,13 @@ export default function LocationScreen({ navigation }) {
     setGpsCaptured(false);
 
     try {
-      // 1. Request Foreground Permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          t('common.error'),
-          t('location.gpsFailed')
-        );
+        Alert.alert(t('common.error'), t('location.gpsFailed'));
         setLoadingGps(false);
         return;
       }
 
-      // 2. Fetch Position
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -120,330 +120,312 @@ export default function LocationScreen({ navigation }) {
       setCoords({ latitude, longitude });
       setGpsCaptured(true);
 
-      // 3. Reverse Geocode Coordinates
       const geocodeList = await Location.reverseGeocodeAsync({ latitude, longitude });
       
       if (geocodeList && geocodeList.length > 0) {
         const addr = geocodeList[0];
-        
-        // Build address string (e.g. "Flat No, Street, Landmark, District, City, Region, Pincode")
         const addressPieces = [
           addr.name,
           addr.street,
+          addr.subregion,
           addr.district,
           addr.city,
-          addr.subregion,
-          addr.region,
-          addr.postalCode
-        ].filter(Boolean); // Filters out null or undefined values
+          addr.postalCode,
+        ].filter(Boolean);
 
         const joinedAddress = addressPieces.join(', ');
-        setManualAddress(joinedAddress);
+        if (!manualAddress) {
+          setManualAddress(joinedAddress);
+        }
 
-        // Attempt to auto-match district and taluka from GPS address
-        const gpsDistrictName = addr.district || '';
-        const gpsCityName = addr.city || addr.subregion || '';
-        
-        const matchedDist = districts.find(d => 
-          d.name.toLowerCase().includes(gpsDistrictName.toLowerCase()) || 
-          gpsDistrictName.toLowerCase().includes(d.name.toLowerCase())
-        );
-        
-        if (matchedDist) {
-          setSelectedDistrict(matchedDist);
-          const tList = await getTalukas(matchedDist.id);
-          setTalukas(tList);
-          
-          const matchedTal = tList.find(t => 
-            t.name.toLowerCase().includes(gpsCityName.toLowerCase()) || 
-            gpsCityName.toLowerCase().includes(t.name.toLowerCase())
+        // Try to match district
+        if (districts.length > 0 && addr.district) {
+          const matchedD = districts.find(
+            (d) =>
+              d.name.toLowerCase() === addr.district.toLowerCase() ||
+              addr.district.toLowerCase().includes(d.name.toLowerCase()) ||
+              d.name.toLowerCase().includes(addr.district.toLowerCase())
           );
-          if (matchedTal) {
-            setSelectedTaluka(matchedTal);
+          if (matchedD) {
+            setSelectedDistrict(matchedD);
+            const tList = await getTalukas(matchedD.id);
+            setTalukas(tList);
           }
         }
-        
-        Alert.alert(
-          t('common.success'),
-          t('location.gpsSuccess'),
-          [{ text: t('common.ok') }]
-        );
-      } else {
-        Alert.alert(
-          t('common.success'),
-          locale === 'mr' ? 'अक्षांश व रेखांश मिळवले. कृपया पत्ता स्वहस्ते प्रविष्ट करा.' : 'GPS location captured. Please enter address manually.',
-          [{ text: t('common.ok') }]
-        );
       }
     } catch (e) {
-      console.log('Error fetching GPS coordinates:', e);
-      Alert.alert(
-        t('common.error'),
-        t('location.gpsFailed')
-      );
+      console.log('Error fetching GPS position:', e);
+      Alert.alert(t('common.error'), t('location.gpsFailed'));
     } finally {
       setLoadingGps(false);
     }
   };
 
   const handleNext = () => {
-    const trimmedAddress = manualAddress.trim();
-    
-    if (!trimmedAddress) {
+    if (!manualAddress.trim()) {
       Alert.alert(
         t('common.error'),
-        t('location.addressRequired'),
-        [{ text: t('common.ok'), style: 'cancel' }]
+        locale === 'mr' ? 'कृपया घटनेचा पत्ता प्रविष्ट करा.' : 'Please enter the incident or premises address.',
+        [{ text: t('common.ok') }]
       );
       return;
     }
 
-    if (!selectedDistrict) {
-      Alert.alert(
-        t('common.error'),
-        locale === 'mr' ? 'कृपया जिल्हा निवडा.' : 'Please select a district.',
-        [{ text: t('common.ok'), style: 'cancel' }]
-      );
-      return;
-    }
-
-    if (!selectedTaluka) {
-      Alert.alert(
-        t('common.error'),
-        locale === 'mr' ? 'कृपया तालुका निवडा.' : 'Please select a taluka.',
-        [{ text: t('common.ok'), style: 'cancel' }]
-      );
-      return;
-    }
-
-    // Save location details to global draft complaint context
     updateDraft({
+      district_id: selectedDistrict ? selectedDistrict.id : null,
+      district_name: selectedDistrict ? selectedDistrict.name : null,
+      taluka_id: selectedTaluka ? selectedTaluka.id : null,
+      taluka_name: selectedTaluka ? selectedTaluka.name : null,
       location: {
+        address: manualAddress.trim(),
         latitude: coords ? coords.latitude : null,
         longitude: coords ? coords.longitude : null,
-        address: trimmedAddress
       },
-      district_id: selectedDistrict.id,
-      taluka_id: selectedTaluka.id,
-      district_name: selectedDistrict.name,
-      taluka_name: selectedTaluka.name
     });
 
-    // Navigate to Complaint Review Screen
     navigation.navigate('ComplaintReview');
   };
 
+  const filteredDistricts = districts.filter((d) =>
+    d.name.toLowerCase().includes(districtSearch.toLowerCase().trim())
+  );
+
+  const filteredTalukas = talukas.filter((t) =>
+    t.name.toLowerCase().includes(talukaSearch.toLowerCase().trim())
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
+      {/* Wizard Progress Bar */}
+      <View style={styles.progressBarWrap}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressStepText}>STEP 3 OF 4</Text>
+          <Text style={styles.progressStepName}>
+            {locale === 'mr' ? 'घटनास्थळ' : 'Incident Location'}
+          </Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: '75%' }]} />
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {/* Header instructions */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{t('location.headerTitle')}</Text>
-            <Text style={styles.headerDesc}>
-              {locale === 'mr' 
-                ? 'तक्रार दाखल करण्यासाठी अचूक स्थान महत्त्वाचे आहे. आपण GPS द्वारे किंवा स्वहस्ते पत्ता नोंदवू शकता.' 
-                : 'Accurate location is essential for investigation. Capture via GPS or enter manual address.'}
-            </Text>
+        {/* GPS Quick Capture Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="location" size={20} color={colors.secondary} />
+            <Text style={styles.cardTitle}>{t('location.gpsTitle')}</Text>
           </View>
+          <Text style={styles.cardDesc}>
+            {locale === 'mr' 
+              ? 'आपल्या सध्याच्या जीपीएस स्थानावरून घटनास्थळ आपोआप निश्चित करा.'
+              : 'Auto-detect your coordinates to assist FDA officers in rapid dispatch.'}
+          </Text>
 
-          {/* GPS Capture Button Option */}
-          <View style={styles.gpsSection}>
-            <CustomButton
-              title={loadingGps ? t('location.fetching') : t('location.useCurrent')}
-              onPress={handleGetGpsLocation}
-              variant={gpsCaptured ? 'accent' : 'outline'}
-              disabled={loadingGps}
-              icon={
-                loadingGps ? (
-                  <ActivityIndicator size="small" color="#0A3D62" />
-                ) : (
-                  <Ionicons name="location-sharp" size={20} color={gpsCaptured ? '#FFFFFF' : '#0A3D62'} />
-                )
-              }
-            />
-
-            {/* GPS Metadata pill */}
-            {coords && (
-              <View style={styles.gpsMetaPill}>
-                <Ionicons name="compass-outline" size={14} color="#38ADA9" />
-                <Text style={styles.gpsMetaText}>
-                  {t('location.latitude')}: {coords.latitude.toFixed(5)} • {t('location.longitude')}: {coords.longitude.toFixed(5)}
+          <TouchableOpacity
+            style={[styles.gpsButton, gpsCaptured && styles.gpsButtonSuccess]}
+            onPress={handleGetGpsLocation}
+            disabled={loadingGps}
+            activeOpacity={0.85}
+          >
+            {loadingGps ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons 
+                  name={gpsCaptured ? 'checkmark-circle' : 'locate-outline'} 
+                  size={18} 
+                  color="#FFFFFF" 
+                  style={{ marginRight: 6 }} 
+                />
+                <Text style={styles.gpsButtonText}>
+                  {gpsCaptured 
+                    ? (locale === 'mr' ? 'जीपीएस स्थान जोडले ✓' : 'GPS Coordinates Attached ✓')
+                    : t('location.gpsBtn')}
                 </Text>
-              </View>
+              </>
             )}
-          </View>
+          </TouchableOpacity>
 
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.horizontalLine} />
-            <Text style={styles.dividerText}>{t('location.orManual')}</Text>
-            <View style={styles.horizontalLine} />
-          </View>
+          {coords && (
+            <View style={styles.coordBox}>
+              <Text style={styles.coordText}>
+                LAT: {coords.latitude.toFixed(6)} | LONG: {coords.longitude.toFixed(6)}
+              </Text>
+            </View>
+          )}
+        </View>
 
-          {/* Manual Address Input Box */}
-          <View style={styles.addressBoxContainer}>
-            <Text style={styles.label}>
-              {t('location.addressLabel')} <Text style={styles.asterisk}>*</Text>
+        {/* Administrative Jurisdiction Selector */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="business-outline" size={20} color={colors.primary} />
+            <Text style={styles.cardTitle}>
+              {locale === 'mr' ? 'प्रशासकीय अधिकारक्षेत्र' : 'Administrative Jurisdiction'}
             </Text>
-            <TextInput
-              style={styles.addressInput}
-              placeholder={t('location.addressPlaceholder')}
-              placeholderTextColor="#94A3B8"
-              value={manualAddress}
-              multiline={true}
-              numberOfLines={4}
-              textAlignVertical="top"
-              onChangeText={setManualAddress}
-            />
           </View>
+          <Text style={styles.cardDesc}>
+            {locale === 'mr' 
+              ? 'महाराष्ट्र जिल्ह्यातील योग्य तालुका व क्षेत्र निवडा.'
+              : 'Select the respective Maharashtra district and taluka for jurisdiction.'}
+          </Text>
 
-          {/* District Selector */}
-          <View style={styles.dropdownContainer}>
-            <Text style={styles.label}>
-              {locale === 'mr' ? 'जिल्हा' : 'District'} <Text style={styles.asterisk}>*</Text>
+          {/* District Picker Selector */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>
+              {locale === 'mr' ? 'जिल्हा (District)' : 'Administrative District'}
             </Text>
             <TouchableOpacity 
-              style={styles.dropdownButton} 
+              style={styles.dropdownSelector}
               onPress={() => setShowDistrictModal(true)}
+              activeOpacity={0.8}
             >
-              <Text style={selectedDistrict ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
-                {selectedDistrict ? selectedDistrict.name : t('location.selectDistrict')}
+              <Text style={selectedDistrict ? styles.dropdownSelectedText : styles.dropdownPlaceholder}>
+                {selectedDistrict ? selectedDistrict.name : (locale === 'mr' ? 'जिल्हा निवडा (Select District)...' : 'Select District (36 available)...')}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#64748B" />
+              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* Taluka Selector */}
-          <View style={styles.dropdownContainer}>
-            <Text style={styles.label}>
-              {locale === 'mr' ? 'तालुका' : 'Taluka'} <Text style={styles.asterisk}>*</Text>
+          {/* Taluka Picker Selector */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>
+              {locale === 'mr' ? 'तालुका (Taluka)' : 'Sub-Division / Taluka'}
             </Text>
             <TouchableOpacity 
-              style={[styles.dropdownButton, !selectedDistrict && styles.dropdownDisabledButton]} 
-              onPress={() => {
-                if (!selectedDistrict) {
-                  Alert.alert(
-                    t('common.error'),
-                    locale === 'mr' ? 'कृपया प्रथम जिल्हा निवडा.' : 'Please select a district first.'
-                  );
-                  return;
-                }
-                setShowTalukaModal(true);
-              }}
+              style={[
+                styles.dropdownSelector,
+                !selectedDistrict && styles.dropdownDisabled,
+              ]}
+              onPress={() => selectedDistrict && setShowTalukaModal(true)}
               disabled={!selectedDistrict}
+              activeOpacity={0.8}
             >
-              <Text style={selectedTaluka ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
-                {selectedTaluka ? selectedTaluka.name : (selectedDistrict ? t('location.selectTaluka') : (locale === 'mr' ? 'प्रथम जिल्हा निवडा' : 'Select District First'))}
+              <Text style={selectedTaluka ? styles.dropdownSelectedText : styles.dropdownPlaceholder}>
+                {selectedTaluka 
+                  ? selectedTaluka.name 
+                  : (selectedDistrict ? 'Select Taluka...' : 'Select District First')}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#64748B" />
+              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
+        </View>
 
-        </ScrollView>
+        {/* Premises Street Address Input */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="map-outline" size={20} color={colors.primary} />
+            <Text style={styles.cardTitle}>{t('location.addressLabel')} *</Text>
+          </View>
 
-        {/* Footer continue button */}
-        <View style={styles.footer}>
-          <CustomButton
-            title={t('location.nextBtn')}
-            onPress={handleNext}
-            variant="primary"
-            icon={<Ionicons name="checkbox-outline" size={20} color="#FFFFFF" />}
+          <TextInput
+            style={styles.addressInput}
+            placeholder={t('location.addressPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            value={manualAddress}
+            onChangeText={setManualAddress}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
           />
         </View>
 
-      </View>
+        {/* Proceed Button */}
+        <View style={styles.btnWrap}>
+          <CustomButton
+            title={locale === 'mr' ? 'तक्रार पडताळणी (पुढील पायरी)' : 'Proceed to Review Summary →'}
+            onPress={handleNext}
+            variant="primary"
+          />
+        </View>
+
+      </ScrollView>
 
       {/* District Selection Modal */}
-      <Modal
-        visible={showDistrictModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowDistrictModal(false)}
-      >
-        <View style={styles.modalOverlay}>
+      <Modal visible={showDistrictModal} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('location.selectDistrict')}</Text>
+              <Text style={styles.modalTitle}>Select Maharashtra District</Text>
               <TouchableOpacity onPress={() => setShowDistrictModal(false)}>
-                <Ionicons name="close" size={24} color="#0A3D62" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.modalSearchWrap}>
+              <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search district name..."
+                placeholderTextColor={colors.textMuted}
+                value={districtSearch}
+                onChangeText={setDistrictSearch}
+              />
+            </View>
+
             <FlatList
-              data={districts}
-              keyExtractor={(item) => item.id.toString()}
+              data={filteredDistricts}
+              keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[
-                    styles.modalItem,
-                    selectedDistrict && selectedDistrict.id === item.id && styles.modalItemSelected
-                  ]}
+                  style={styles.modalItem}
                   onPress={() => handleSelectDistrict(item)}
                 >
-                  <Text style={[
-                    styles.modalItemText,
-                    selectedDistrict && selectedDistrict.id === item.id && styles.modalItemTextSelected
-                  ]}>
-                    {item.name}
-                  </Text>
-                  {selectedDistrict && selectedDistrict.id === item.id && (
-                    <Ionicons name="checkmark" size={20} color="#0A3D62" />
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                  {selectedDistrict?.id === item.id && (
+                    <Ionicons name="checkmark" size={18} color={colors.secondary} />
                   )}
                 </TouchableOpacity>
               )}
-              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
-              contentContainerStyle={styles.modalList}
             />
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Taluka Selection Modal */}
-      <Modal
-        visible={showTalukaModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowTalukaModal(false)}
-      >
-        <View style={styles.modalOverlay}>
+      <Modal visible={showTalukaModal} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('location.selectTaluka')}</Text>
+              <Text style={styles.modalTitle}>Select Taluka ({selectedDistrict?.name})</Text>
               <TouchableOpacity onPress={() => setShowTalukaModal(false)}>
-                <Ionicons name="close" size={24} color="#0A3D62" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.modalSearchWrap}>
+              <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search taluka..."
+                placeholderTextColor={colors.textMuted}
+                value={talukaSearch}
+                onChangeText={setTalukaSearch}
+              />
+            </View>
+
             <FlatList
-              data={talukas}
-              keyExtractor={(item) => item.id.toString()}
+              data={filteredTalukas}
+              keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[
-                    styles.modalItem,
-                    selectedTaluka && selectedTaluka.id === item.id && styles.modalItemSelected
-                  ]}
+                  style={styles.modalItem}
                   onPress={() => handleSelectTaluka(item)}
                 >
-                  <Text style={[
-                    styles.modalItemText,
-                    selectedTaluka && selectedTaluka.id === item.id && styles.modalItemTextSelected
-                  ]}>
-                    {item.name}
-                  </Text>
-                  {selectedTaluka && selectedTaluka.id === item.id && (
-                    <Ionicons name="checkmark" size={20} color="#0A3D62" />
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                  {selectedTaluka?.id === item.id && (
+                    <Ionicons name="checkmark" size={18} color={colors.secondary} />
                   )}
                 </TouchableOpacity>
               )}
-              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
-              contentContainerStyle={styles.modalList}
             />
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
+
     </SafeAreaView>
   );
 }
@@ -451,176 +433,197 @@ export default function LocationScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
-  container: {
-    flex: 1,
+  progressBarWrap: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  progressHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressStepText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.secondary,
+    letterSpacing: 0.8,
+  },
+  progressStepName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  progressTrack: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.secondary,
+    borderRadius: 2,
   },
   scrollContainer: {
-    padding: 24,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 8,
-  },
-  headerDesc: {
-    fontSize: 14,
-    color: '#64748B',
-    lineHeight: 22,
-  },
-  gpsSection: {
-    marginBottom: 24,
-    alignItems: 'center',
-    width: '100%',
-  },
-  gpsMetaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDFA',
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#CCFBF1',
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginTop: 10,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
-  gpsMetaText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0D9488',
-    marginLeft: 6,
-  },
-  dividerRow: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    gap: 8,
+    marginBottom: 4,
   },
-  horizontalLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
+  cardTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: colors.text,
   },
-  dividerText: {
+  cardDesc: {
     fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 16,
+  },
+  gpsButton: {
+    backgroundColor: colors.secondary,
+    height: 44,
+    borderRadius: borderRadius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  gpsButtonSuccess: {
+    backgroundColor: colors.success,
+  },
+  gpsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
-    color: '#64748B',
-    paddingHorizontal: 12,
-    textTransform: 'uppercase',
   },
-  addressBoxContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 8,
-  },
-  asterisk: {
-    color: '#EF4444',
-  },
-  addressInput: {
+  coordBox: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
     backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#0F172A',
-    height: 110,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
   },
-  footer: {
-    padding: 24,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+  coordText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
-  dropdownContainer: {
-    marginBottom: 20,
+  fieldGroup: {
+    marginBottom: spacing.md,
   },
-  dropdownButton: {
+  fieldLabel: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 6,
+  },
+  dropdownSelector: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    height: 44,
+    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
   },
-  dropdownDisabledButton: {
-    backgroundColor: '#E2E8F0',
-    borderColor: '#CBD5E1',
-    opacity: 0.7,
-  },
-  dropdownPlaceholderText: {
-    fontSize: 15,
-    color: '#94A3B8',
+  dropdownDisabled: {
+    backgroundColor: '#F1F5F9',
   },
   dropdownSelectedText: {
-    fontSize: 15,
-    color: '#0F172A',
+    fontSize: 14,
     fontWeight: '600',
+    color: colors.text,
+  },
+  dropdownPlaceholder: {
+    fontSize: 13.5,
+    color: colors.textMuted,
+  },
+  addressInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    minHeight: 80,
+    fontSize: 14,
+    color: colors.text,
+  },
+  btnWrap: {
+    marginTop: spacing.xs,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(10, 61, 98, 0.4)',
+    backgroundColor: 'rgba(14, 31, 53, 0.6)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '60%',
-    paddingTop: 16,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: '80%',
+    padding: spacing.lg,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#0A3D62',
+    color: colors.text,
   },
-  modalList: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  modalItem: {
+  modalSearchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    height: 40,
+    marginBottom: spacing.md,
   },
-  modalItemSelected: {
-    backgroundColor: '#F0F9FF',
-    marginHorizontal: -24,
-    paddingHorizontal: 24,
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 13.5,
+    color: colors.text,
+  },
+  modalItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   modalItemText: {
-    fontSize: 16,
-    color: '#334155',
-  },
-  modalItemTextSelected: {
-    color: '#0A3D62',
-    fontWeight: '700',
-  },
-  modalSeparator: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
+    fontSize: 14,
+    color: colors.text,
   },
 });

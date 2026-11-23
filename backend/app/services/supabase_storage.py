@@ -58,9 +58,11 @@ async def upload_file(file: UploadFile) -> str:
     try:
         with open(local_path, "wb") as f:
             f.write(file_content)
-        # Return a relative URL. FastAPI main.py will mount /static,
-        # so this file will be accessible at http://<host>:<port>/static/uploads/<filename>
-        public_url = f"/static/uploads/{unique_filename}"
+        # Return a fully-qualified URL so mobile clients can display the image directly.
+        # The base host/port is read from settings; defaults to localhost:8000.
+        host = os.environ.get("BACKEND_HOST", "localhost")
+        port = os.environ.get("BACKEND_PORT", str(getattr(settings, "PORT", 8000)))
+        public_url = f"http://{host}:{port}/static/uploads/{unique_filename}"
         logger.info(f"File saved locally: {public_url}")
         return public_url
     except Exception as e:

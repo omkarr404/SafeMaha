@@ -1,33 +1,33 @@
 // FILE NAME: d:\Omkar\Water\FDA\screens\ComplaintSuccessScreen.js
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   SafeAreaView, 
   BackHandler, 
-  StatusBar,
-  Share 
+  StatusBar, 
+  Share, 
+  TouchableOpacity 
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import CustomButton from '../components/CustomButton';
 import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 export default function ComplaintSuccessScreen({ route, navigation }) {
   const { t, locale } = useLanguage();
   const { complaintId } = route.params || { complaintId: 'MHFDA-2026-XXXXXX' };
+  const [copied, setCopied] = useState(false);
 
-  // Intercept and override back button press (Android/iOS gestures)
   useEffect(() => {
     const handleBackButton = () => {
-      // Send user back to Home Dashboard instead of form steps
       navigation.popToTop();
-      return true; // Prevents default back nav action
+      return true;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackButton);
-
     return () => backHandler.remove();
   }, [navigation]);
 
@@ -35,8 +35,8 @@ export default function ComplaintSuccessScreen({ route, navigation }) {
     try {
       await Share.share({
         message: locale === 'mr'
-          ? `माझी तक्रार सेफमहा (SafeMaha) वर यशस्वीरित्या दाखल झाली आहे. तक्रार संदर्भ क्र: ${complaintId}`
-          : `My consumer safety complaint has been logged successfully on SafeMaha. Reference ID: ${complaintId}`,
+          ? `माझी ग्राहक तक्रार सेफमहा (SafeMaha - Maharashtra FDA) वर यशस्वीरित्या दाखल झाली आहे. संदर्भ क्र: ${complaintId}`
+          : `My consumer safety grievance has been registered on SafeMaha (Maharashtra FDA). Reference ID: ${complaintId}`,
       });
     } catch (error) {
       console.log('Share error:', error);
@@ -44,7 +44,6 @@ export default function ComplaintSuccessScreen({ route, navigation }) {
   };
 
   const handleTrack = () => {
-    // Navigate to Status Tracking Screen for this specific ID
     navigation.navigate('ComplaintStatus', { complaintId });
   };
 
@@ -54,50 +53,76 @@ export default function ComplaintSuccessScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
+      {/* Top Banner Ribbon */}
+      <View style={styles.topRibbon}>
+        <Text style={styles.topRibbonText}>
+          {locale === 'mr' 
+            ? 'महाराष्ट्र शासन • अन्न व औषध प्रशासन पावती' 
+            : 'GOVT. OF MAHARASHTRA • OFFICIAL ACKNOWLEDGMENT'}
+        </Text>
+      </View>
+
       <View style={styles.container}>
         
-        {/* Success Header Illustration */}
-        <View style={styles.content}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="checkmark" size={60} color="#FFFFFF" />
-          </View>
-          
-          <Text style={styles.successTitle}>{t('success.headerTitle')}</Text>
-          <Text style={styles.successSub}>{t('success.successMsg')}</Text>
+        {/* Success Icon Block */}
+        <View style={styles.iconCircle}>
+          <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+        </View>
 
-          {/* Reference ID Card Container */}
-          <View style={styles.idCard}>
-            <Text style={styles.idLabel}>{t('success.idLabel')}</Text>
-            <Text style={styles.idText}>{complaintId}</Text>
-            
-            <TouchableOpacity 
-              style={styles.shareBtn} 
-              activeOpacity={0.7}
-              onPress={handleShare}
-            >
-              <Ionicons name="share-social-outline" size={16} color="#3C6382" />
-              <Text style={styles.shareText}>
-                {locale === 'mr' ? 'शेअर करा' : 'Share ID'}
-              </Text>
-            </TouchableOpacity>
+        <Text style={styles.successHeading}>{t('success.title')}</Text>
+        <Text style={styles.successSub}>
+          {locale === 'mr' 
+            ? 'आपली तक्रार एफडीए प्रणालीमध्ये यशस्वीरित्या नोंदवली गेली आहे.' 
+            : 'Your consumer safety grievance has been officially transmitted to Maharashtra FDA.'}
+        </Text>
+
+        {/* Reference ID Showcase Card */}
+        <View style={styles.referenceCard}>
+          <Text style={styles.refCardLabel}>OFFICIAL COMPLAINT REFERENCE ID</Text>
+          <Text style={styles.refCardId}>{complaintId}</Text>
+          
+          <TouchableOpacity 
+            style={styles.shareRowBtn} 
+            onPress={handleShare}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="share-social-outline" size={16} color={colors.secondary} />
+            <Text style={styles.shareText}>
+              {locale === 'mr' ? 'संदर्भ क्रमांक शेअर करा' : 'Share Reference Number'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Guidance Information */}
+        <View style={styles.guidanceBox}>
+          <Ionicons name="shield-checkmark" size={18} color={colors.primary} style={{ marginTop: 2, marginRight: 8 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.guidanceTitle}>
+              {locale === 'mr' ? 'पुढील कारवाई' : 'What Happens Next?'}
+            </Text>
+            <Text style={styles.guidanceBody}>
+              {locale === 'mr'
+                ? 'संबंधित क्षेत्रातील अन्न व औषध निरीक्षकांना ही तक्रार सोपवण्यात आली असून आवश्यकतेनुसार तपास सुरू केला जाईल. आपण कधीही संदर्भ क्रमांकाने प्रगती तपासू शकता.'
+                : 'Your complaint is routed to the designated regional inspector for evidence triage. You can track progress anytime without logging in using this Reference ID.'}
+            </Text>
           </View>
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.footer}>
+        <View style={styles.actionBlock}>
           <CustomButton
-            title={t('success.trackBtn')}
+            title={locale === 'mr' ? 'तक्रारीची स्थिती तपासा (Track Status)' : 'Track Investigation Status'}
             onPress={handleTrack}
-            variant="accent" // Teal accent for tracking
-            icon={<Ionicons name="analytics" size={20} color="#FFFFFF" />}
+            variant="primary"
+            icon={<Ionicons name="time-outline" size={18} color="#FFFFFF" />}
           />
-          
+
           <CustomButton
-            title={t('success.homeBtn')}
+            title={locale === 'mr' ? 'मुख्य पृष्ठावर परत जा' : 'Return to Home Dashboard'}
             onPress={handleReturnHome}
-            variant="outline" // Clean outline style for home
-            icon={<Ionicons name="home-outline" size={18} color="#0A3D62" />}
+            variant="outline"
           />
         </View>
 
@@ -106,100 +131,111 @@ export default function ComplaintSuccessScreen({ route, navigation }) {
   );
 }
 
-// Simple inline Touchable for Share to avoid building complex sub-component
-import { TouchableOpacity } from 'react-native';
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
+  },
+  topRibbon: {
+    backgroundColor: colors.primary,
+    paddingVertical: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  topRibbonText: {
+    color: '#CBD5E1',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   container: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
   },
   iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#38ADA9', // Accent Teal
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#38ADA9',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    marginBottom: spacing.md,
   },
-  successTitle: {
-    fontSize: 26,
+  successHeading: {
+    fontSize: 22,
     fontWeight: '800',
-    color: '#0A3D62',
+    color: colors.text,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 4,
   },
   successSub: {
-    fontSize: 15,
-    color: '#64748B',
+    fontSize: 13,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 16,
-    marginBottom: 30,
+    paddingHorizontal: spacing.md,
+    lineHeight: 18,
+    marginBottom: spacing.lg,
   },
-  idCard: {
-    backgroundColor: '#F8FAFC',
+  referenceCard: {
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    padding: 20,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadows.sm,
+    marginBottom: spacing.md,
   },
-  idLabel: {
-    fontSize: 12,
+  refCardLabel: {
+    fontSize: 10.5,
     fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
+    color: colors.textSecondary,
     letterSpacing: 1,
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  idText: {
+  refCardId: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0A3D62',
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    color: colors.primary,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
   },
-  shareBtn: {
+  shareRowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E2E8F0',
+    gap: 6,
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.infoBg,
   },
   shareText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#3C6382',
-    marginLeft: 6,
+    color: colors.secondary,
   },
-  footer: {
+  guidanceBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     width: '100%',
-    marginBottom: 10,
+    marginBottom: spacing.xl,
+  },
+  guidanceTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  guidanceBody: {
+    fontSize: 11.5,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  actionBlock: {
+    width: '100%',
+    gap: 4,
   },
 });

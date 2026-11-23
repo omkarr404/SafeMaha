@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Image, StatusBar } from 'react-native';
 import { Asset } from 'expo-asset';
 import { SvgXml } from 'react-native-svg';
+import { colors, typography, spacing } from '../constants/theme';
 
 export default function SplashScreen({ navigation }) {
   const [svgXml, setSvgXml] = useState(null);
@@ -14,7 +15,6 @@ export default function SplashScreen({ navigation }) {
 
     async function loadEmblem() {
       try {
-        // Dynamically load the SVG asset using expo-asset
         const asset = Asset.fromModule(require('../assets/emblem.svg'));
         await asset.downloadAsync();
         const response = await fetch(asset.localUri || asset.uri);
@@ -25,8 +25,6 @@ export default function SplashScreen({ navigation }) {
             if (isMounted) {
               setSvgXml(text);
             }
-          } else {
-            console.log('Fetched content is not a valid SVG (e.g. error page/empty). Falling back to PNG logo.');
           }
         }
       } catch (error) {
@@ -40,10 +38,9 @@ export default function SplashScreen({ navigation }) {
 
     loadEmblem();
 
-    // Automatically navigate to Language Selection Screen after 3 seconds
     const timer = setTimeout(() => {
       navigation.replace('LanguageSelection');
-    }, 3000);
+    }, 2800);
 
     return () => {
       isMounted = false;
@@ -53,14 +50,20 @@ export default function SplashScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A3D62" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       
+      {/* Top Department Ribbon */}
+      <View style={styles.topRibbon}>
+        <Text style={styles.govText}>GOVERNMENT OF MAHARASHTRA</Text>
+        <Text style={styles.deptText}>Food & Drug Administration (FDA)</Text>
+      </View>
+
+      {/* Center Brandmark */}
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           {svgXml ? (
-            <SvgXml xml={svgXml} width={100} height={170} />
+            <SvgXml xml={svgXml} width={110} height={160} />
           ) : (
-            // Fallback to high-quality image logo if SVG is still loading or fails
             <View style={styles.fallbackContainer}>
               <Image 
                 source={require('../assets/logo-2.png')} 
@@ -71,13 +74,17 @@ export default function SplashScreen({ navigation }) {
         </View>
 
         <Text style={styles.appName}>SafeMaha</Text>
-        <Text style={styles.tagline}>Consumer Safety & Public Health Platform</Text>
-        <Text style={styles.department}>Food & Drug Administration, Maharashtra</Text>
+        <View style={styles.taglineBadge}>
+          <Text style={styles.taglineText}>Consumer Safety & Public Health Portal</Text>
+        </View>
+        <Text style={styles.marathiSub}>महाराष्ट्र अन्न व औषध प्रशासन नागरिक तक्रार निवारण कक्ष</Text>
       </View>
 
+      {/* Footer System Indicator */}
       <View style={styles.footer}>
-        <ActivityIndicator size="large" color="#38ADA9" style={styles.loader} />
-        <Text style={styles.governmentText}>GOVERNMENT OF MAHARASHTRA</Text>
+        <ActivityIndicator size="small" color="#FFFFFF" style={styles.loader} />
+        <Text style={styles.footerSecurityNote}>OFFICIAL GRIEVANCE REDRESSAL SYSTEM</Text>
+        <Text style={styles.footerVersion}>v1.0 • Enterprise Citizen Portal</Text>
       </View>
     </View>
   );
@@ -86,11 +93,28 @@ export default function SplashScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A3D62',
+    backgroundColor: colors.primary,
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
+  },
+  topRibbon: {
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  govText: {
+    fontSize: 11,
+    color: '#CBD5E1',
+    letterSpacing: 2.2,
+    fontWeight: '700',
+  },
+  deptText: {
+    fontSize: 12,
+    color: colors.secondaryLight,
+    fontWeight: '600',
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
@@ -99,64 +123,74 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   logoContainer: {
-    height: 180,
+    height: 170,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   fallbackContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowRadius: 6,
+    elevation: 4,
   },
   fallbackLogo: {
-    width: 90,
-    height: 90,
+    width: 80,
+    height: 80,
     resizeMode: 'contain',
   },
   appName: {
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 1.5,
-    marginBottom: 10,
-    textAlign: 'center',
+    letterSpacing: 1.2,
+    marginBottom: spacing.xs,
   },
-  tagline: {
-    fontSize: 16,
-    color: '#D1D8E0',
-    textAlign: 'center',
-    marginBottom: 6,
-    fontWeight: '500',
-    paddingHorizontal: 10,
+  taglineBadge: {
+    backgroundColor: 'rgba(37, 99, 235, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.4)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: spacing.sm,
   },
-  department: {
+  taglineText: {
     fontSize: 13,
-    color: '#38ADA9',
-    textAlign: 'center',
+    color: '#E2E8F0',
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+  },
+  marathiSub: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.lg,
   },
   footer: {
     alignItems: 'center',
     width: '100%',
   },
   loader: {
-    marginBottom: 24,
+    marginBottom: spacing.md,
   },
-  governmentText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    letterSpacing: 2,
+  footerSecurityNote: {
+    fontSize: 10,
+    color: '#94A3B8',
+    letterSpacing: 1.8,
     fontWeight: '700',
-    opacity: 0.8,
+  },
+  footerVersion: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
   },
 });

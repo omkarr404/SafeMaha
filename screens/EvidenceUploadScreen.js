@@ -17,12 +17,12 @@ import { useComplaints } from '../context/ComplaintContext';
 import CustomButton from '../components/CustomButton';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 export default function EvidenceUploadScreen({ navigation }) {
   const { t, locale } = useLanguage();
   const { draftComplaint, updateDraft } = useComplaints();
   
-  // Local state for image list synced with draft context
   const [evidence, setEvidence] = useState(draftComplaint.evidence || []);
 
   useEffect(() => {
@@ -34,7 +34,9 @@ export default function EvidenceUploadScreen({ navigation }) {
     if (status !== 'granted') {
       Alert.alert(
         t('common.error'),
-        locale === 'mr' ? 'कॅमेरा वापरण्याची परवानगी नाकारली आहे. कृपया ती सेटिंग्जमधून सुरु करा.' : 'Camera permissions are required to take photos.'
+        locale === 'mr' 
+          ? 'कॅमेरा वापरण्याची परवानगी नाकारली आहे. कृपया ती सेटिंग्जमधून सुरु करा.' 
+          : 'Camera permissions are required to capture evidence photos.'
       );
       return false;
     }
@@ -46,7 +48,9 @@ export default function EvidenceUploadScreen({ navigation }) {
     if (status !== 'granted') {
       Alert.alert(
         t('common.error'),
-        locale === 'mr' ? 'गॅलरी वापरण्याची परवानगी नाकारली आहे. कृपया ती सेटिंग्जमधून सुरु करा.' : 'Media library permissions are required to select photos.'
+        locale === 'mr' 
+          ? 'गॅलरी वापरण्याची परवानगी नाकारली आहे. कृपया ती सेटिंग्जमधून सुरु करा.' 
+          : 'Media gallery permissions are required to select photos.'
       );
       return false;
     }
@@ -100,7 +104,7 @@ export default function EvidenceUploadScreen({ navigation }) {
 
       if (!result.canceled && result.assets) {
         const selectedUris = result.assets.map((asset) => asset.uri);
-        const updated = [...evidence, ...selectedUris].slice(0, 5); // Hard cap to 5 images
+        const updated = [...evidence, ...selectedUris].slice(0, 5);
         setEvidence(updated);
         updateDraft({ evidence: updated });
       }
@@ -117,8 +121,6 @@ export default function EvidenceUploadScreen({ navigation }) {
   };
 
   const handleNext = () => {
-    // Requirements: For Week 2 production validation, let's make sure they upload at least one image or allow continuing. 
-    // Usually food/drug safety complaints require evidence, but to be user-friendly, let's suggest it.
     if (evidence.length === 0) {
       Alert.alert(
         locale === 'mr' ? 'पुरावा आवश्यक' : 'Evidence Required',
@@ -132,87 +134,115 @@ export default function EvidenceUploadScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
+      {/* Wizard Progress Bar */}
+      <View style={styles.progressBarWrap}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressStepText}>STEP 2 OF 4</Text>
+          <Text style={styles.progressStepName}>
+            {locale === 'mr' ? 'फोटो पुरावा' : 'Photographic Proof'}
+          </Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: '50%' }]} />
+        </View>
+      </View>
+
       <View style={styles.container}>
-        
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {/* Header instructions */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{t('evidence.headerTitle')}</Text>
-            <Text style={styles.guidelines}>{t('evidence.guidelines')}</Text>
-            <Text style={styles.warning}>{t('evidence.warning')}</Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.uploadOptions}>
-            <TouchableOpacity 
-              style={styles.optionButton} 
-              activeOpacity={0.8}
-              onPress={handleTakePhoto}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: '#38ADA915' }]}>
-                <Ionicons name="camera" size={32} color="#38ADA9" />
-              </View>
-              <Text style={styles.optionText}>{t('evidence.takePhoto')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.optionButton} 
-              activeOpacity={0.85}
-              onPress={handleChooseGallery}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: '#0A3D6215' }]}>
-                <Ionicons name="images" size={32} color="#0A3D62" />
-              </View>
-              <Text style={styles.optionText}>{t('evidence.chooseGallery')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Photos list count */}
-          <View style={styles.countContainer}>
-            <Text style={styles.countTitle}>{t('evidence.photosSelected')}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{evidence.length} / 5</Text>
-            </View>
-          </View>
-
-          {/* Thumbnails preview list */}
-          {evidence.length > 0 ? (
-            <View style={styles.previewGrid}>
-              {evidence.map((uri, index) => (
-                <View key={index} style={styles.thumbnailWrapper}>
-                  <Image source={{ uri }} style={styles.thumbnail} />
-                  <TouchableOpacity 
-                    style={styles.removeBtn} 
-                    activeOpacity={0.8}
-                    onPress={() => handleRemovePhoto(index)}
-                  >
-                    <Ionicons name="close" size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.placeholderContainer}>
-              <Ionicons name="cloud-upload" size={48} color="#94A3B8" />
-              <Text style={styles.placeholderText}>
-                {locale === 'mr' ? 'अपलोड केलेले फोटो येथे दिसतील.' : 'No photos selected yet.'}
+          
+          {/* Instructions Notice Card */}
+          <View style={styles.guidanceCard}>
+            <Ionicons name="information-circle-outline" size={20} color={colors.secondary} style={{ marginRight: 8, marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.guidanceTitle}>
+                {locale === 'mr' ? 'कायदेशीर पुरावा मार्गदर्शक' : 'Evidence Submission Guidelines'}
+              </Text>
+              <Text style={styles.guidanceText}>
+                {locale === 'mr' 
+                  ? 'उत्पादनाचे वेष्टन (लेबल), उत्पादन/कालबाह्यता तारीख, बॅच क्रमांक, व खरेदी पावतीचे स्पष्ट फोटो जोडा (जास्तीत जास्त ५ फोटो).'
+                  : 'Attach clear photos of product labels, batch number, expiry date, cash receipt, or packaging defect (up to 5 photos).'}
               </Text>
             </View>
-          )}
+          </View>
 
+          {/* Action Trigger Buttons */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity 
+              style={styles.mediaButton} 
+              onPress={handleTakePhoto}
+              activeOpacity={0.8}
+            >
+              <View style={styles.mediaIconWrap}>
+                <Ionicons name="camera" size={24} color={colors.primary} />
+              </View>
+              <Text style={styles.mediaButtonTitle}>{t('evidence.takePhoto')}</Text>
+              <Text style={styles.mediaButtonSub}>{locale === 'mr' ? 'कॅमेरा उघडा' : 'Use camera'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.mediaButton} 
+              onPress={handleChooseGallery}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.mediaIconWrap, { backgroundColor: colors.infoBg }]}>
+                <Ionicons name="images" size={24} color={colors.secondary} />
+              </View>
+              <Text style={styles.mediaButtonTitle}>{t('evidence.chooseGallery')}</Text>
+              <Text style={styles.mediaButtonSub}>{locale === 'mr' ? 'गॅलरीतून निवडा' : 'Browse gallery'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Uploaded Evidence Gallery */}
+          <View style={styles.galleryCard}>
+            <View style={styles.galleryHeader}>
+              <Text style={styles.galleryTitle}>
+                {locale === 'mr' ? 'जोडलेले फोटो' : 'Attached Evidence'}
+              </Text>
+              <View style={styles.counterBadge}>
+                <Text style={styles.counterText}>{evidence.length} / 5</Text>
+              </View>
+            </View>
+
+            {evidence.length > 0 ? (
+              <View style={styles.photosGrid}>
+                {evidence.map((uri, index) => (
+                  <View key={index} style={styles.photoWrapper}>
+                    <Image source={{ uri }} style={styles.thumbnail} />
+                    <TouchableOpacity
+                      style={styles.deleteBadge}
+                      onPress={() => handleRemovePhoto(index)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="close" size={14} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <View style={styles.photoIndexBadge}>
+                      <Text style={styles.photoIndexText}>#{index + 1}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyGallery}>
+                <Ionicons name="cloud-upload-outline" size={40} color={colors.textMuted} />
+                <Text style={styles.emptyText}>{t('evidence.noImages')}</Text>
+                <Text style={styles.emptySub}>
+                  {locale === 'mr' ? 'किमान १ फोटो पुरावा जोडणे आवश्यक आहे' : 'At least one photo is required to substantiate complaint'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Navigation Button */}
+          <View style={styles.btnWrap}>
+            <CustomButton
+              title={locale === 'mr' ? 'घटनास्थळ निश्चित करा (पुढील पायरी)' : 'Proceed to Incident Location →'}
+              onPress={handleNext}
+              variant="primary"
+            />
+          </View>
         </ScrollView>
-
-        {/* Continue Footer */}
-        <View style={styles.footer}>
-          <CustomButton 
-            title={t('evidence.nextBtn')}
-            onPress={handleNext}
-            variant="primary"
-            icon={<Ionicons name="map-outline" size={20} color="#FFFFFF" />}
-          />
-        </View>
-
       </View>
     </SafeAreaView>
   );
@@ -221,152 +251,195 @@ export default function EvidenceUploadScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
+  },
+  progressBarWrap: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  progressHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressStepText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.secondary,
+    letterSpacing: 0.8,
+  },
+  progressStepName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  progressTrack: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.secondary,
+    borderRadius: 2,
   },
   scrollContainer: {
-    padding: 24,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 8,
-  },
-  guidelines: {
-    fontSize: 14,
-    color: '#64748B',
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  warning: {
-    fontSize: 12,
-    color: '#E58E26',
-    fontWeight: '600',
-  },
-  uploadOptions: {
+  guidanceCard: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
+    alignItems: 'flex-start',
   },
-  optionButton: {
+  guidanceTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 2,
+  },
+  guidanceText: {
+    fontSize: 11.5,
+    color: colors.text,
+    lineHeight: 16,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  mediaButton: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 20,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     alignItems: 'center',
-    marginHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    ...shadows.sm,
   },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  mediaIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  optionText: {
-    fontSize: 14,
+  mediaButtonTitle: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#0A3D62',
-    textAlign: 'center',
+    color: colors.text,
   },
-  countContainer: {
+  mediaButtonSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  galleryCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  galleryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    borderBottomWidth: 1.5,
-    borderColor: '#F1F5F9',
-    paddingBottom: 10,
+    marginBottom: spacing.md,
   },
-  countTitle: {
-    fontSize: 16,
+  galleryTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0A3D62',
+    color: colors.text,
   },
-  badge: {
-    backgroundColor: '#0A3D62',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+  counterBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  counterText: {
+    fontSize: 11,
     fontWeight: '700',
+    color: colors.primary,
   },
-  previewGrid: {
+  photosGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
+    gap: 12,
   },
-  thumbnailWrapper: {
-    position: 'relative',
-    margin: 6,
-    width: '30%', // Grid spacing for 3 items per row
-    aspectRatio: 1,
-    borderRadius: 8,
+  photoWrapper: {
+    width: 90,
+    height: 90,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
+    position: 'relative',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   thumbnail: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
-  removeBtn: {
+  deleteBadge: {
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.85)', // Red delete button with transparency
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: colors.critical,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 2,
   },
-  placeholderContainer: {
-    height: 150,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    justifyContent: 'center',
+  photoIndexBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: 'rgba(20, 43, 74, 0.75)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  photoIndexText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  emptyGallery: {
+    paddingVertical: spacing.xl,
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'center',
   },
-  placeholderText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '500',
+  emptyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 8,
+  },
+  emptySub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
     textAlign: 'center',
   },
-  footer: {
-    padding: 24,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+  btnWrap: {
+    marginTop: spacing.xs,
   },
 });

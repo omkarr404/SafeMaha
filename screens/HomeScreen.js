@@ -10,14 +10,14 @@ import {
   StatusBar, 
   ScrollView, 
   Image, 
-  Alert,
-  Dimensions
+  Dimensions 
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getNotifications } from '../services/notificationService';
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -32,7 +32,7 @@ export default function HomeScreen({ navigation }) {
         const savedMobile = await AsyncStorage.getItem('@safemaha_saved_mobile');
         if (savedMobile) {
           const list = await getNotifications(savedMobile);
-          const unread = list.filter(n => !n.read).length;
+          const unread = list.filter((n) => !n.read).length;
           setUnreadNotifications(unread);
         } else {
           setUnreadNotifications(0);
@@ -51,145 +51,192 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate(targetScreen);
   };
 
-  const featureCards = [
+  const serviceCards = [
     {
       id: 'file',
       title: t('home.cards.fileComplaint.title'),
       desc: t('home.cards.fileComplaint.desc'),
       icon: 'document-text-outline',
-      color: '#38ADA9', // Accent Teal
-      screen: 'ComplaintForm'
+      highlight: true,
+      screen: 'ComplaintForm',
     },
     {
       id: 'track',
       title: t('home.cards.trackComplaint.title'),
       desc: t('home.cards.trackComplaint.desc'),
-      icon: 'time-outline',
-      color: '#3C6382', // Secondary Blue
-      screen: 'TrackComplaint'
+      icon: 'search-outline',
+      screen: 'TrackComplaint',
     },
     {
       id: 'my-complaints',
       title: t('home.cards.myComplaints.title'),
       desc: t('home.cards.myComplaints.desc'),
       icon: 'folder-open-outline',
-      color: '#0A3D62', // Primary Blue
-      screen: 'MyComplaints'
+      screen: 'MyComplaints',
     },
     {
       id: 'education',
       title: t('home.cards.safetyEducation.title'),
       desc: t('home.cards.safetyEducation.desc'),
-      icon: 'book-outline',
-      color: '#E58E26', // Warning Gold
-      screen: 'SafetyEducation'
+      icon: 'shield-checkmark-outline',
+      screen: 'SafetyEducation',
+    },
+    {
+      id: 'profile',
+      title: t('profile.headerTitle'),
+      desc: locale === 'mr' ? 'आपले प्रोफाईल व तक्रारींची आकडेवारी.' : 'Profile details & complaint metrics.',
+      icon: 'person-circle-outline',
+      screen: 'CitizenProfile',
     },
     {
       id: 'faq',
       title: t('home.cards.faqs.title'),
       desc: t('home.cards.faqs.desc'),
       icon: 'help-circle-outline',
-      color: '#82589F', // Help Purple
-      screen: 'FAQ'
+      screen: 'FAQ',
     },
-    {
-      id: 'notifications',
-      title: t('home.cards.notifications.title'),
-      desc: t('home.cards.notifications.desc'),
-      icon: 'notifications-outline',
-      color: '#EF4444', // Alert Red
-      screen: 'Notifications',
-      badge: unreadNotifications
-    },
-    {
-      id: 'profile',
-      title: t('profile.headerTitle'),
-      desc: locale === 'mr' ? 'आपले प्रोफाईल तपशील आणि तक्रारींची आकडेवारी पहा.' : 'View your profile details and complaint statistics.',
-      icon: 'person-outline',
-      color: '#0D9488',
-      screen: 'CitizenProfile'
-    }
   ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A3D62" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       
       {/* Top Government Strip */}
       <View style={styles.govStrip}>
         <Text style={styles.govStripText}>
-          {locale === 'mr' ? 'महाराष्ट्र शासन • अन्न व औषध प्रशासन' : 'GOVT. OF MAHARASHTRA • FOOD & DRUG ADMINISTRATION'}
+          {locale === 'mr' 
+            ? 'महाराष्ट्र शासन • अन्न व औषध प्रशासन' 
+            : 'GOVT. OF MAHARASHTRA • FOOD & DRUG ADMINISTRATION'}
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
-        {/* Welcome Banner */}
+        {/* Executive Government Header Banner */}
         <View style={styles.banner}>
-          <View style={styles.bannerHeader}>
-            <Image 
-              source={require('../assets/logo-2.png')} 
-              style={styles.fdaLogo} 
-            />
-            <View style={styles.titleContainer}>
-              <Text style={styles.bannerTitle}>{t('common.appName')}</Text>
-              <Text style={styles.bannerSubtitle}>
-                {locale === 'mr' ? 'महाराष्ट्र ग्राहक सुरक्षा पोर्टल' : 'Maharashtra Consumer Safety'}
+          <View style={styles.bannerTopRow}>
+            <View style={styles.brandRow}>
+              <View style={styles.logoWrap}>
+                <Image 
+                  source={require('../assets/logo-2.png')} 
+                  style={styles.fdaLogo} 
+                />
+              </View>
+              <View>
+                <Text style={styles.bannerTitle}>SafeMaha</Text>
+                <Text style={styles.bannerSubtitle}>
+                  {locale === 'mr' ? 'नागरिक सुरक्षा व तक्रार निवारण पोर्टल' : 'Citizen Safety & Grievance Portal'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Notification Bell */}
+            <TouchableOpacity 
+              style={styles.notifButton} 
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
+              {unreadNotifications > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadNotifications}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Quick Primary Call to Action */}
+          <View style={styles.heroActionCard}>
+            <View style={{ flex: 1, paddingRight: spacing.md }}>
+              <Text style={styles.heroActionTitle}>
+                {locale === 'mr' ? 'असुरक्षित अन्न किंवा औषधाची तक्रार नोंदवा' : 'Report Unsafe Food or Medicine'}
+              </Text>
+              <Text style={styles.heroActionSub}>
+                {locale === 'mr' 
+                  ? 'अन्न भेसळ, बनावट औषधे व कॉस्मेटिक्सवर थेट एफडीए कारवाई.'
+                  : 'Fast investigation & sampling by Maharashtra FDA officers.'}
               </Text>
             </View>
+            <TouchableOpacity 
+              style={styles.heroButton}
+              onPress={() => navigation.navigate('ComplaintForm')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.heroButtonText}>
+                {locale === 'mr' ? 'तक्रार करा' : 'File Now'}
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.welcomeMsg}>{t('home.welcomeTitle')}</Text>
-          <Text style={styles.welcomeSub}>{t('home.welcomeSub')}</Text>
         </View>
 
-        {/* Features Section */}
+        {/* Emergency Helplines Strip */}
+        <View style={styles.helplineBar}>
+          <View style={styles.helplineItem}>
+            <Ionicons name="call" size={14} color={colors.secondary} />
+            <Text style={styles.helplineText}>FDA Toll-Free: <strong>1800-222-365</strong></Text>
+          </View>
+          <View style={styles.helplineDivider} />
+          <View style={styles.helplineItem}>
+            <Ionicons name="shield" size={14} color={colors.success} />
+            <Text style={styles.helplineText}>NCH: <strong>1915</strong></Text>
+          </View>
+        </View>
+
+        {/* Main Services Grid */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeading}>{t('home.sectionTitle')}</Text>
+          <View style={styles.sectionHeadingRow}>
+            <Text style={styles.sectionHeading}>
+              {locale === 'mr' ? 'नागरिक सेवा केंद्र' : 'Citizen Services'}
+            </Text>
+            <Text style={styles.sectionSub}>
+              {locale === 'mr' ? 'अधिकृत सेवा निवडा' : 'Select an official service'}
+            </Text>
+          </View>
           
           <View style={styles.gridContainer}>
-            {featureCards.map((card) => (
+            {serviceCards.map((card) => (
               <TouchableOpacity
                 key={card.id}
-                style={styles.card}
-                activeOpacity={0.9}
+                style={[
+                  styles.card,
+                  card.highlight && styles.highlightedCard,
+                ]}
+                activeOpacity={0.85}
                 onPress={() => handleCardPress(card.screen)}
               >
                 <View style={styles.cardHeader}>
-                  <View style={[styles.iconWrapper, { backgroundColor: card.color + '15' }]}>
-                    <Ionicons name={card.icon} size={28} color={card.color} />
+                  <View style={[
+                    styles.iconWrapper, 
+                    card.highlight ? styles.iconWrapperHighlighted : styles.iconWrapperNormal
+                  ]}>
+                    <Ionicons 
+                      name={card.icon} 
+                      size={22} 
+                      color={card.highlight ? colors.secondary : colors.primary} 
+                    />
                   </View>
-                  {card.badge > 0 && (
-                    <View style={styles.badgeContainer}>
-                      <Text style={styles.badgeText}>{card.badge}</Text>
-                    </View>
-                  )}
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                 </View>
                 <Text style={styles.cardTitle}>{card.title}</Text>
-                <Text style={styles.cardDesc} numberOfLines={3}>{card.desc}</Text>
-                
-                {/* Footer action arrow */}
-                <View style={styles.cardFooter}>
-                  <Text style={[styles.actionText, { color: '#0A3D62' }]}>
-                    {locale === 'mr' ? 'उघडा' : 'Open'} →
-                  </Text>
-                </View>
+                <Text style={styles.cardDesc} numberOfLines={2}>{card.desc}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Live Safety Advisory Alert Banner (Static Mock) */}
+        {/* Official Public Safety Advisory Banner */}
         <View style={styles.advisoryCard}>
           <View style={styles.advisoryHeader}>
-            <Ionicons name="warning" size={20} color="#E58E26" />
+            <Ionicons name="alert-circle" size={18} color={colors.warning} />
             <Text style={styles.advisoryTitle}>
-              {locale === 'mr' ? 'नवीनतम सुरक्षा सूचना' : 'Latest Safety Advisory'}
+              {locale === 'mr' ? 'अधिकृत सुरक्षा सूचना' : 'Official FDA Public Advisory'}
             </Text>
           </View>
           <Text style={styles.advisoryText}>
             {locale === 'mr' 
-              ? 'बनावट सौंदर्यप्रसाधने आणि कालबाह्य औषधांविषयी दक्ष रहा. खरेदी करताना नेहमी वैध परवाना तपासा.'
-              : 'Be vigilant against counterfeit cosmetics and expired drugs. Always verify the license number on medical purchases.'}
+              ? 'औषधे खरेदी करताना नेहमी वैध जीएसटी बिल आणि औषध परवाना क्रमांक तपासा. कालबाह्य औषधे विकणे हा दंडनीय गुन्हा आहे.'
+              : 'Always demand a valid invoice with license details when purchasing medicines. Selling expired or unscratched drugs is a punishable offense under Drugs & Cosmetics Act.'}
           </Text>
         </View>
 
@@ -201,175 +248,245 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
   },
   govStrip: {
-    backgroundColor: '#07263E',
-    paddingVertical: 6,
+    backgroundColor: colors.primaryDark,
+    paddingVertical: 5,
     alignItems: 'center',
     width: '100%',
   },
   govStripText: {
-    color: '#D1D8E0',
-    fontSize: 10,
+    color: '#CBD5E1',
+    fontSize: 9.5,
     fontWeight: '700',
     letterSpacing: 1,
   },
   scrollContainer: {
-    paddingBottom: 30,
+    paddingBottom: spacing.xxl,
   },
   banner: {
-    backgroundColor: '#0A3D62',
-    padding: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 5,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
   },
-  bannerHeader: {
+  bannerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    gap: spacing.md,
+  },
+  logoWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   fdaLogo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FFFFFF',
-    marginRight: 14,
-  },
-  titleContainer: {
-    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
   },
   bannerTitle: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   bannerSubtitle: {
-    fontSize: 13,
-    color: '#38ADA9',
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    color: '#CBD5E1',
+    fontWeight: '500',
   },
-  welcomeMsg: {
-    fontSize: 20,
+  notifButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: colors.critical,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  bellBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  heroActionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroActionTitle: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  welcomeSub: {
-    fontSize: 14,
-    color: '#E2E8F0',
-    lineHeight: 20,
-    opacity: 0.9,
+  heroActionSub: {
+    fontSize: 11,
+    color: '#CBD5E1',
+    lineHeight: 15,
+  },
+  heroButton: {
+    backgroundColor: colors.secondary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: borderRadius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  helplineBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    ...shadows.sm,
+  },
+  helplineItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  helplineText: {
+    fontSize: 11,
+    color: colors.text,
+  },
+  helplineDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: colors.border,
   },
   sectionContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  sectionHeadingRow: {
+    marginBottom: spacing.md,
   },
   sectionHeading: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 16,
-    letterSpacing: 0.5,
+    color: colors.text,
+  },
+  sectionSub: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 12,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    width: (width - 52) / 2, // Responsive grid card widths
-    marginBottom: 16,
-    shadowColor: '#0A3D62',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 3,
-    justifyContent: 'space-between',
-    minHeight: 180,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    width: (width - 48 - 12) / 2,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
+    ...shadows.sm,
+    minHeight: 125,
+    justifyContent: 'space-between',
+  },
+  highlightedCard: {
+    borderColor: 'rgba(37, 99, 235, 0.3)',
+    backgroundColor: '#FAFBFD',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.xs,
   },
   iconWrapper: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  badgeContainer: {
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
+  iconWrapperNormal: {
+    backgroundColor: '#F1F5F9',
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
+  iconWrapperHighlighted: {
+    backgroundColor: colors.infoBg,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 6,
+    color: colors.text,
+    marginBottom: 2,
   },
   cardDesc: {
     fontSize: 11,
-    color: '#64748B',
+    color: colors.textSecondary,
     lineHeight: 15,
-    flex: 1,
-  },
-  cardFooter: {
-    marginTop: 10,
-    alignItems: 'flex-start',
-  },
-  actionText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   advisoryCard: {
-    backgroundColor: '#FFF9EB',
-    borderRadius: 14,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 8,
+    backgroundColor: '#FFFBEB',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
     borderWidth: 1,
-    borderColor: '#FFE0A3',
+    borderColor: '#FDE68A',
   },
   advisoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 4,
   },
   advisoryTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#B7791F',
-    marginLeft: 8,
+    color: '#92400E',
   },
   advisoryText: {
-    fontSize: 12,
-    color: '#744210',
-    lineHeight: 18,
+    fontSize: 11.5,
+    color: '#78350F',
+    lineHeight: 16,
   },
 });

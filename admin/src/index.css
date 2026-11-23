@@ -1,25 +1,26 @@
 /* FILE NAME: d:\Omkar\Water\FDA\admin\src\index.css */
+@import './theme.css';
 
 :root {
-  --primary-color: #0A3D62;
-  --secondary-color: #3C6382;
-  --accent-color: #38ADA9;
-  --bg-color: #F5F6FA;
-  --card-bg: #FFFFFF;
-  --text-dark: #0F172A;
-  --text-muted: #64748B;
-  --border-color: #E2E8F0;
+  --primary-color: var(--gov-primary);
+  --secondary-color: var(--gov-secondary);
+  --accent-color: var(--gov-secondary);
+  --bg-color: var(--gov-bg);
+  --card-bg: var(--gov-card-bg);
+  --text-dark: var(--gov-text);
+  --text-muted: var(--gov-text-secondary);
+  --border-color: var(--gov-border);
   
-  --status-submitted: #3C6382;
-  --status-assigned: #0A3D62;
-  --status-investigation: #E58E26;
-  --status-action: #38ADA9;
-  --status-closed: #888888;
+  --status-submitted: #475569;
+  --status-assigned: var(--gov-secondary);
+  --status-investigation: var(--gov-warning);
+  --status-action: var(--gov-success);
+  --status-closed: #64748B;
   
-  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --shadow: 0 4px 6px -1px rgba(10, 61, 98, 0.05), 0 2px 4px -1px rgba(10, 61, 98, 0.02);
-  --shadow-lg: 0 10px 15px -3px rgba(10, 61, 98, 0.08), 0 4px 6px -2px rgba(10, 61, 98, 0.04);
+  --font-family: var(--gov-font);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow: var(--gov-shadow-sm);
+  --shadow-lg: var(--gov-shadow-md);
 }
 
 * {

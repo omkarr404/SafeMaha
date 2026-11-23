@@ -1,4 +1,4 @@
-// FILE NAME: d:\Omkar\Water\FDA\screens\NotificationsScreen.js
+// FILE NAME: d:\Omkar\Resume-Projects\FDA\screens\NotificationsScreen.js
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -9,16 +9,14 @@ import {
   FlatList, 
   TouchableOpacity, 
   ActivityIndicator,
-  Alert,
   StatusBar
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { getNotifications, markAsRead, markAllAsRead } from '../services/notificationService';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as authService from '../services/authService';
-
-const SAVED_MOBILE_KEY = '@safemaha_saved_mobile';
+import CustomButton from '../components/CustomButton';
+import { colors, spacing, borderRadius, typography, shadows } from '../constants/theme';
 
 export default function NotificationsScreen({ navigation }) {
   const { t, locale } = useLanguage();
@@ -57,7 +55,6 @@ export default function NotificationsScreen({ navigation }) {
     setLoading(true);
     try {
       await markAllAsRead(mobileNumber);
-      // Reload
       const list = await getNotifications(mobileNumber);
       setNotifications(list);
     } catch (e) {
@@ -70,7 +67,6 @@ export default function NotificationsScreen({ navigation }) {
   const handleNotificationTap = async (item) => {
     if (!item.read) {
       await markAsRead(item.id);
-      // Update local state
       setNotifications(prev => 
         prev.map(n => n.id === item.id ? { ...n, read: true } : n)
       );
@@ -83,12 +79,12 @@ export default function NotificationsScreen({ navigation }) {
 
   const getNotificationIcon = (title) => {
     const text = (title.en || '').toLowerCase();
-    if (text.includes('submitted')) return { name: 'document-text', color: '#3C6382' };
-    if (text.includes('assigned')) return { name: 'person', color: '#0A3D62' };
-    if (text.includes('investigation')) return { name: 'search', color: '#E58E26' };
-    if (text.includes('action')) return { name: 'shield-checkmark', color: '#38ADA9' };
-    if (text.includes('closed')) return { name: 'checkmark-circle', color: '#888888' };
-    return { name: 'notifications', color: '#0A3D62' };
+    if (text.includes('submitted')) return { name: 'document-text', color: colors.primary };
+    if (text.includes('assigned')) return { name: 'person', color: colors.secondary };
+    if (text.includes('investigation')) return { name: 'search', color: colors.warning };
+    if (text.includes('action')) return { name: 'shield-checkmark', color: colors.success };
+    if (text.includes('closed')) return { name: 'checkmark-circle', color: colors.textMuted };
+    return { name: 'notifications', color: colors.secondary };
   };
 
   const formattedDate = (isoString) => {
@@ -106,11 +102,11 @@ export default function NotificationsScreen({ navigation }) {
     return (
       <TouchableOpacity 
         style={[styles.card, !item.read && styles.unreadCard]} 
-        activeOpacity={0.8}
+        activeOpacity={0.75}
         onPress={() => handleNotificationTap(item)}
       >
-        <View style={[styles.iconContainer, { backgroundColor: iconData.color + '10' }]}>
-          <Ionicons name={iconData.name} size={22} color={iconData.color} />
+        <View style={[styles.iconContainer, { backgroundColor: iconData.color + '15' }]}>
+          <Ionicons name={iconData.name} size={20} color={iconData.color} />
         </View>
 
         <View style={styles.textContainer}>
@@ -119,7 +115,10 @@ export default function NotificationsScreen({ navigation }) {
             {!item.read && <View style={styles.unreadDot} />}
           </View>
           <Text style={styles.cardDesc} numberOfLines={2}>{descText}</Text>
-          <Text style={styles.cardDate}>{formattedDate(item.date)}</Text>
+          <View style={styles.metaRow}>
+            <Ionicons name="time-outline" size={12} color={colors.textMuted} style={{ marginRight: 4 }} />
+            <Text style={styles.cardDate}>{formattedDate(item.date)}</Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -128,8 +127,12 @@ export default function NotificationsScreen({ navigation }) {
   if (loading && notifications.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0A3D62" />
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>
+            {locale === 'mr' ? 'सूचना लोड होत आहेत...' : 'Loading notifications...'}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -139,20 +142,23 @@ export default function NotificationsScreen({ navigation }) {
   if (!isMobileSaved) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         <View style={styles.promptContainer}>
-          <Ionicons name="notifications-off-outline" size={80} color="#CBD5E1" style={styles.promptIcon} />
+          <View style={styles.promptIconBox}>
+            <Ionicons name="notifications-off-outline" size={44} color={colors.secondary} />
+          </View>
           <Text style={styles.promptTitle}>
-            {locale === 'mr' ? 'सूचना मिळवा' : 'Get Live Updates'}
+            {locale === 'mr' ? 'अद्ययावत सूचना मिळवा' : 'Track Case Notifications'}
           </Text>
           <Text style={styles.promptDesc}>
             {locale === 'mr'
-              ? 'तुमच्या तक्रारींच्या प्रगतीचे त्वरित इशारे मिळवण्यासाठी कृपया तुमच्या तक्रारीशी लिंक केलेला मोबाईल क्रमांक पडताळणी करा.'
-              : 'Please verify your mobile number on the My Complaints tab first to view push alerts and status updates linked to your filings.'}
+              ? 'आपल्या नोंदणीकृत तक्रारींच्या तपासणी व कारवाईचे थेट अपडेट मिळवण्यासाठी कृपया प्रथम आपला मोबाईल क्रमांक OTP द्वारे पडताळा.'
+              : 'To view real-time investigation alerts, officer notes, and milestone updates for your complaints, verify your registered mobile number.'}
           </Text>
           <CustomButton
-            title={locale === 'mr' ? 'माझ्या तक्रारी उघडा' : 'Open My Complaints'}
+            title={locale === 'mr' ? 'माझ्या तक्रारी उघडा' : 'Verify Mobile Number'}
             onPress={() => navigation.navigate('MyComplaints')}
+            variant="primary"
             style={styles.promptBtn}
           />
         </View>
@@ -160,23 +166,29 @@ export default function NotificationsScreen({ navigation }) {
     );
   }
 
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <View style={styles.container}>
         
         {/* Actions Header bar */}
-        {notifications.length > 0 && (
-          <View style={styles.actionHeader}>
+        <View style={styles.actionHeader}>
+          <View style={styles.countBadge}>
             <Text style={styles.countText}>
-              {locale === 'mr' ? `एकूण ${notifications.length} सूचना` : `${notifications.length} notifications`}
+              {locale === 'mr' 
+                ? `एकूण ${notifications.length} सूचना (${unreadCount} नवीन)` 
+                : `${notifications.length} Notifications (${unreadCount} unread)`}
             </Text>
+          </View>
+          {unreadCount > 0 && (
             <TouchableOpacity onPress={handleMarkAllRead} style={styles.readAllBtn}>
-              <Ionicons name="checkmark-done" size={16} color="#38ADA9" />
+              <Ionicons name="checkmark-done" size={16} color={colors.secondary} />
               <Text style={styles.readAllText}>{t('notifications.markAllRead')}</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* Notifications list */}
         <View style={styles.listContainer}>
@@ -192,7 +204,12 @@ export default function NotificationsScreen({ navigation }) {
             />
           ) : (
             <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-outline" size={60} color="#CBD5E1" />
+              <View style={styles.emptyIconBox}>
+                <Ionicons name="notifications-outline" size={42} color={colors.textMuted} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {locale === 'mr' ? 'कोणत्याही नवीन सूचना नाहीत' : 'No Notifications'}
+              </Text>
               <Text style={styles.emptyText}>{t('notifications.emptyState')}</Text>
             </View>
           )}
@@ -206,7 +223,7 @@ export default function NotificationsScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
@@ -215,93 +232,115 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: typography.bodySmall.fontSize,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
   promptContainer: {
     flex: 1,
-    padding: 30,
+    padding: spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
   },
-  promptIcon: {
-    marginBottom: 20,
+  promptIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
   promptTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 10,
+    fontSize: typography.h3.fontSize,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   promptDesc: {
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: typography.bodyRegular.fontSize,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 30,
-    paddingHorizontal: 10,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.sm,
   },
   promptBtn: {
-    width: 220,
+    width: 240,
   },
   actionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
+  },
+  countBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   countText: {
-    fontSize: 13,
+    fontSize: typography.caption.fontSize,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.textSecondary,
   },
   readAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: borderRadius.sm,
+    backgroundColor: '#EFF6FF',
   },
   readAllText: {
-    fontSize: 13,
+    fontSize: typography.caption.fontSize,
     fontWeight: '700',
-    color: '#38ADA9',
+    color: colors.secondary,
     marginLeft: 4,
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
   },
   listScroll: {
-    paddingBottom: 20,
+    paddingBottom: spacing.xxl,
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     alignItems: 'flex-start',
-    shadowColor: '#0A3D62',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.01,
-    shadowRadius: 3,
-    elevation: 1.5,
+    ...shadows.subtle,
   },
   unreadCard: {
-    borderColor: '#D0E2EF',
-    backgroundColor: '#F3F8FC',
+    borderColor: '#BFDBFE',
+    backgroundColor: '#F8FAFC',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.secondary,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   textContainer: {
     flex: 1,
@@ -313,45 +352,65 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
+    fontSize: typography.bodyRegular.fontSize,
+    fontWeight: '600',
+    color: colors.text,
     flex: 1,
     paddingRight: 6,
   },
   unreadText: {
-    color: '#0A3D62',
-    fontWeight: '800',
+    color: colors.primary,
+    fontWeight: '700',
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#38ADA9',
+    backgroundColor: colors.secondary,
   },
   cardDesc: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 16,
+    fontSize: typography.bodySmall.fontSize,
+    color: colors.textSecondary,
+    lineHeight: 18,
     marginBottom: 6,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   cardDate: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '600',
+    fontSize: typography.caption.fontSize,
+    color: colors.textMuted,
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
+    padding: spacing.xxl,
     marginTop: 60,
   },
+  emptyIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTitle: {
+    fontSize: typography.h4.fontSize,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 6,
+  },
   emptyText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: typography.bodySmall.fontSize,
+    color: colors.textSecondary,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '400',
   },
 });

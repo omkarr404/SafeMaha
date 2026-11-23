@@ -1,4 +1,4 @@
-// FILE NAME: d:\Omkar\Water\FDA\screens\FAQScreen.js
+// FILE NAME: d:\Omkar\Resume-Projects\FDA\screens\FAQScreen.js
 
 import React, { useState } from 'react';
 import { 
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius, typography, shadows } from '../constants/theme';
 
 export default function FAQScreen() {
   const { t, locale } = useLanguage();
@@ -38,38 +39,59 @@ export default function FAQScreen() {
   const filteredFaqs = faqData.filter(item => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return true;
-    return item.q.toLowerCase().includes(query) || item.a.toLowerCase().includes(query);
+    return (item.q && item.q.toLowerCase().includes(query)) || 
+           (item.a && item.a.toLowerCase().includes(query));
   });
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <View style={styles.container}>
         
         {/* Search bar wrapper */}
         <View style={styles.searchBox}>
           <View style={styles.inputWrapper}>
-            <Ionicons name="search" size={20} color="#64748B" style={styles.searchIcon} />
+            <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={styles.input}
               placeholder={t('faq.searchPlaceholder')}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={(text) => {
                 setSearchQuery(text);
-                setExpandedId(null); // Collapse when searching
+                setExpandedId(null);
               }}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearIcon}>
-                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         {/* FAQ list */}
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer} 
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Informational intro card */}
+          <View style={styles.introCard}>
+            <View style={styles.introIconBox}>
+              <Ionicons name="help-circle" size={24} color={colors.secondary} />
+            </View>
+            <View style={styles.introTextBox}>
+              <Text style={styles.introTitle}>
+                {locale === 'mr' ? 'नेहमी विचारले जाणारे प्रश्न' : 'Frequently Asked Questions'}
+              </Text>
+              <Text style={styles.introSubtitle}>
+                {locale === 'mr' 
+                  ? 'अन्न व औषध तक्रार निवारण प्रक्रिया, पुरावे आणि कायदेशीर माहिती'
+                  : 'Common questions on FDA complaint filing, evidence rules, and case tracking'}
+              </Text>
+            </View>
+          </View>
+
           {filteredFaqs.length > 0 ? (
             filteredFaqs.map((item) => {
               const isExpanded = expandedId === item.id;
@@ -77,18 +99,20 @@ export default function FAQScreen() {
                 <TouchableOpacity
                   key={item.id}
                   style={[styles.faqCard, isExpanded && styles.faqCardExpanded]}
-                  activeOpacity={0.9}
+                  activeOpacity={0.8}
                   onPress={() => handleToggleExpand(item.id)}
                 >
                   <View style={styles.questionRow}>
                     <Text style={[styles.questionText, isExpanded && styles.questionTextExpanded]}>
                       {item.q}
                     </Text>
-                    <Ionicons 
-                      name={isExpanded ? "chevron-up" : "chevron-down"} 
-                      size={20} 
-                      color={isExpanded ? "#38ADA9" : "#64748B"} 
-                    />
+                    <View style={[styles.chevronBox, isExpanded && styles.chevronBoxExpanded]}>
+                      <Ionicons 
+                        name={isExpanded ? "chevron-up" : "chevron-down"} 
+                        size={18} 
+                        color={isExpanded ? colors.secondary : colors.textSecondary} 
+                      />
+                    </View>
                   </View>
                   
                   {isExpanded && (
@@ -101,10 +125,28 @@ export default function FAQScreen() {
             })
           ) : (
             <View style={styles.emptyBox}>
-              <Ionicons name="help-circle-outline" size={48} color="#94A3B8" />
+              <Ionicons name="help-circle-outline" size={48} color={colors.textMuted} />
+              <Text style={styles.emptyTitle}>
+                {locale === 'mr' ? 'कोणतेही प्रश्न सापडले नाहीत' : 'No Results Found'}
+              </Text>
               <Text style={styles.emptyText}>{t('faq.emptyState')}</Text>
             </View>
           )}
+
+          {/* Citizen Helpline Footer Banner */}
+          <View style={styles.helplineCard}>
+            <View style={styles.helplineHeader}>
+              <Ionicons name="call" size={18} color={colors.secondary} style={{ marginRight: 8 }} />
+              <Text style={styles.helplineTitle}>
+                {locale === 'mr' ? 'अजूनही प्रश्न किंवा अडचण आहे?' : 'Need Further Assistance?'}
+              </Text>
+            </View>
+            <Text style={styles.helplineDesc}>
+              {locale === 'mr'
+                ? 'महाराष्ट्र अन्न व औषध प्रशासनाच्या टोल-फ्री क्रमांकावर थेट संपर्क साधा: १८००-२२२-३६५'
+                : 'Contact FDA Maharashtra citizen helpline directly: 1800-222-365 (Mon-Sat, 9:30 AM to 6:00 PM)'}
+            </Text>
+          </View>
         </ScrollView>
 
       </View>
@@ -115,66 +157,92 @@ export default function FAQScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
   },
   searchBox: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: colors.border,
+    ...shadows.subtle,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
     height: 44,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   input: {
     flex: 1,
-    fontSize: 14,
-    color: '#0F172A',
+    fontSize: typography.bodyRegular.fontSize,
+    color: colors.text,
     height: '100%',
   },
   clearIcon: {
     padding: 4,
   },
   scrollContainer: {
-    padding: 16,
-    paddingBottom: 30,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  introCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.subtle,
+  },
+  introIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  introTextBox: {
+    flex: 1,
+  },
+  introTitle: {
+    fontSize: typography.bodyRegular.fontSize,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 2,
+  },
+  introSubtitle: {
+    fontSize: typography.caption.fontSize,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
   faqCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.01,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: colors.border,
+    ...shadows.subtle,
   },
   faqCardExpanded: {
-    borderColor: '#38ADA9',
-    shadowColor: '#38ADA9',
-    shadowOpacity: 0.05,
-    elevation: 2,
+    borderColor: '#BFDBFE',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.secondary,
   },
   questionRow: {
     flexDirection: 'row',
@@ -182,39 +250,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   questionText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0A3D62',
+    fontSize: typography.bodyRegular.fontSize,
+    fontWeight: '600',
+    color: colors.text,
     flex: 1,
-    paddingRight: 10,
+    paddingRight: spacing.sm,
     lineHeight: 20,
   },
   questionTextExpanded: {
-    color: '#0A3D62',
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  chevronBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chevronBoxExpanded: {
+    backgroundColor: '#EFF6FF',
   },
   answerWrapper: {
-    marginTop: 12,
+    marginTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 12,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
   },
   answerText: {
-    fontSize: 13,
-    color: '#475569',
-    lineHeight: 20,
-    fontWeight: '500',
+    fontSize: typography.bodySmall.fontSize,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    fontWeight: '400',
   },
   emptyBox: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
-    marginTop: 60,
+    padding: spacing.xxl,
+    marginTop: 40,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTitle: {
+    fontSize: typography.h4.fontSize,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: 4,
   },
   emptyText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: typography.bodySmall.fontSize,
+    color: colors.textSecondary,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '400',
+  },
+  helplineCard: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    backgroundColor: '#EFF6FF',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  helplineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  helplineTitle: {
+    fontSize: typography.bodyRegular.fontSize,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  helplineDesc: {
+    fontSize: typography.caption.fontSize,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });

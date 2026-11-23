@@ -1,3 +1,5 @@
+// FILE NAME: d:\Omkar\Water\FDA\screens\CitizenProfileScreen.js
+
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -8,19 +10,20 @@ import {
   ScrollView, 
   TouchableOpacity, 
   ActivityIndicator, 
-  Alert,
-  StatusBar
+  Alert, 
+  StatusBar 
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import CustomButton from '../components/CustomButton';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as authService from '../services/authService';
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 const SAVED_MOBILE_KEY = '@safemaha_saved_mobile';
 
 export default function CitizenProfileScreen({ navigation }) {
-  const { t, locale } = useLanguage();
+  const { t, locale, setLocale } = useLanguage();
   
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,7 +31,7 @@ export default function CitizenProfileScreen({ navigation }) {
   const [fullName, setFullName] = useState('');
   const [saving, setSaving] = useState(false);
   
-  // OTP Auth States (if not authenticated)
+  // OTP Auth States
   const [mobileNumber, setMobileNumber] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -79,7 +82,9 @@ export default function CitizenProfileScreen({ navigation }) {
       setOtpSent(true);
       Alert.alert(
         locale === 'mr' ? 'ओटीपी पाठवला' : 'OTP Sent',
-        locale === 'mr' ? 'तुमच्या मोबाईलवर ६ अंकी ओटीपी पाठवला आहे. (चाचणीसाठी १२३४५६ वापरा)' : 'A 6-digit code has been sent to your phone. (Use 123456 for testing)'
+        locale === 'mr' 
+          ? 'तुमच्या मोबाईलवर ६ अंकी ओटीपी पाठवला आहे. (चाचणीसाठी 123456 वापरा)' 
+          : 'A 6-digit code has been sent to your phone. (Use 123456 for testing)'
       );
     } catch (e) {
       console.log('Error sending OTP:', e);
@@ -120,10 +125,7 @@ export default function CitizenProfileScreen({ navigation }) {
   const handleSaveProfile = async () => {
     const nameFormatted = fullName.trim();
     if (!nameFormatted) {
-      Alert.alert(
-        t('common.error'),
-        t('form.validation.fullNameRequired')
-      );
+      Alert.alert(t('common.error'), t('form.validation.fullNameRequired'));
       return;
     }
 
@@ -142,12 +144,12 @@ export default function CitizenProfileScreen({ navigation }) {
 
   const handleLogout = async () => {
     Alert.alert(
-      locale === 'mr' ? 'बाहेर पडा?' : 'Logout?',
-      locale === 'mr' ? 'तुम्ही खात्रीने बाहेर पडू इच्छिता?' : 'Are you sure you want to log out from this device?',
+      locale === 'mr' ? 'बाहेर पडा?' : 'Sign Out?',
+      locale === 'mr' ? 'तुम्ही खात्रीने बाहेर पडू इच्छिता?' : 'Are you sure you want to sign out from SafeMaha?',
       [
         { text: locale === 'mr' ? 'रद्द करा' : 'Cancel', style: 'cancel' },
         { 
-          text: locale === 'mr' ? 'बाहेर पडा' : 'Logout', 
+          text: locale === 'mr' ? 'बाहेर पडा' : 'Sign Out', 
           style: 'destructive',
           onPress: async () => {
             setLoading(true);
@@ -173,83 +175,84 @@ export default function CitizenProfileScreen({ navigation }) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0A3D62" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
   }
 
-  // OTP Login Screen
+  // View 1: Unauthenticated OTP Login
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         <View style={styles.promptContainer}>
-          <View style={styles.promptHeader}>
+          <View style={styles.authCard}>
             <View style={styles.promptIconWrapper}>
-              <Ionicons name="person" size={40} color="#0A3D62" />
+              <Ionicons name="person" size={32} color={colors.primary} />
             </View>
             <Text style={styles.promptTitle}>{t('profile.headerTitle')}</Text>
             <Text style={styles.promptDesc}>
               {locale === 'mr' 
                 ? 'तुमचे प्रोफाईल पाहण्यासाठी आणि तक्रारींची आकडेवारी तपासण्यासाठी ओटीपी द्वारे लॉगिन करा.' 
-                : 'Log in via OTP to access your citizen profile and review grievance summary.'}
+                : 'Authenticate via SMS OTP to access your personal citizen dashboard and grievance statistics.'}
             </Text>
-          </View>
 
-          <View style={styles.promptForm}>
             {authLoading ? (
-              <ActivityIndicator size="large" color="#0A3D62" style={{ marginVertical: 20 }} />
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
             ) : !otpSent ? (
               <>
-                <Text style={styles.promptInputLabel}>{t('form.mobileLabel')}</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="phone-portrait-outline" size={20} color="#64748B" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('myComplaints.mobilePlaceholder')}
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    value={mobileNumber}
-                    onChangeText={setMobileNumber}
-                  />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>{t('form.mobileLabel')}</Text>
+                  <View style={styles.phoneInputWrap}>
+                    <View style={styles.prefixBox}><Text style={styles.prefixText}>+91</Text></View>
+                    <TextInput
+                      style={styles.phoneInput}
+                      placeholder="10-digit mobile number"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="numeric"
+                      maxLength={10}
+                      value={mobileNumber}
+                      onChangeText={(t) => setMobileNumber(t.replace(/[^0-9]/g, ''))}
+                    />
+                  </View>
                 </View>
                 <CustomButton
-                  title={locale === 'mr' ? 'ओटीपी पाठवा' : 'Request OTP'}
+                  title={locale === 'mr' ? 'ओटीपी मिळवा' : 'Request OTP Code'}
                   onPress={handleSendOTP}
-                  style={styles.promptBtn}
+                  variant="primary"
                 />
               </>
             ) : (
               <>
-                <Text style={styles.promptInputLabel}>{locale === 'mr' ? 'ओटीपी कोड' : 'Verification OTP Code'}</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color="#64748B" style={styles.inputIcon} />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    {locale === 'mr' ? 'ओटीपी कोड' : 'Verification OTP Code'}
+                  </Text>
                   <TextInput
-                    style={styles.input}
+                    style={styles.otpInput}
                     placeholder="e.g. 123456"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="number-pad"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
                     maxLength={6}
                     value={otpCode}
                     onChangeText={setOtpCode}
                   />
                 </View>
                 <CustomButton
-                  title={locale === 'mr' ? 'सत्यापित करा' : 'Verify & Login'}
+                  title={locale === 'mr' ? 'प्रमाणित करा व प्रवेश करा' : 'Verify & Enter'}
                   onPress={handleVerifyOTP}
-                  style={styles.promptBtn}
+                  variant="primary"
                 />
                 <TouchableOpacity 
                   onPress={() => {
                     setOtpSent(false);
                     setOtpCode('');
                   }}
-                  style={{ marginTop: 15, alignItems: 'center' }}
+                  style={{ marginTop: 12, alignItems: 'center' }}
                 >
-                  <Text style={{ color: '#0A3D62', fontSize: 14, fontWeight: '700' }}>
-                    ← {locale === 'mr' ? 'मोबाईल नंबर बदला' : 'Change Phone Number'}
+                  <Text style={styles.backPhoneText}>
+                    ← {locale === 'mr' ? 'मोबाईल क्रमांक बदला' : 'Change Mobile Number'}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -260,83 +263,112 @@ export default function CitizenProfileScreen({ navigation }) {
     );
   }
 
+  // View 2: Authenticated Citizen Profile
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         
-        {/* Profile Card Header */}
+        {/* Profile Identity Card */}
         <View style={styles.profileHeaderCard}>
           <View style={styles.avatarContainer}>
             <Text style={styles.avatarText}>
               {fullName ? fullName.charAt(0).toUpperCase() : 'C'}
             </Text>
           </View>
-          <Text style={styles.profileName}>{fullName || (locale === 'mr' ? 'ग्राहक' : 'Citizen')}</Text>
+          <Text style={styles.profileName}>{fullName || (locale === 'mr' ? 'नागरिक' : 'Citizen')}</Text>
           <View style={styles.phoneBadge}>
-            <Ionicons name="phone-portrait-outline" size={14} color="#0A3D62" />
+            <Ionicons name="call" size={12} color={colors.secondary} />
             <Text style={styles.phoneText}>+91 {profileData?.phone_number}</Text>
           </View>
         </View>
 
-        {/* Complaint Statistics Grid */}
-        <View style={styles.sectionContainer}>
+        {/* Complaint Statistics Metrics */}
+        <View style={styles.sectionCard}>
           <Text style={styles.sectionHeading}>{t('profile.complaintStats')}</Text>
           
           <View style={styles.statsGrid}>
-            <View style={[styles.statBox, { borderColor: '#E2E8F0' }]}>
+            <View style={styles.statBox}>
               <Text style={styles.statCount}>{profileData?.complaints_count || 0}</Text>
               <Text style={styles.statLabel}>{t('profile.totalGrievances')}</Text>
             </View>
             
-            <View style={[styles.statBox, { borderColor: '#FEE2E2', backgroundColor: '#FEF2F2' }]}>
-              <Text style={[styles.statCount, { color: '#EF4444' }]}>{profileData?.open_complaints_count || 0}</Text>
+            <View style={[styles.statBox, { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }]}>
+              <Text style={[styles.statCount, { color: colors.critical }]}>
+                {profileData?.open_complaints_count || 0}
+              </Text>
               <Text style={[styles.statLabel, { color: '#991B1B' }]}>{t('profile.openGrievances')}</Text>
             </View>
 
-            <View style={[styles.statBox, { borderColor: '#D1FAE5', backgroundColor: '#ECFDF5' }]}>
-              <Text style={[styles.statCount, { color: '#10B981' }]}>{profileData?.closed_complaints_count || 0}</Text>
-              <Text style={[styles.statLabel, { color: '#065F46' }]}>{t('profile.closedGrievances')}</Text>
+            <View style={[styles.statBox, { borderColor: '#BBF7D0', backgroundColor: '#F0FDF4' }]}>
+              <Text style={[styles.statCount, { color: colors.success }]}>
+                {profileData?.closed_complaints_count || 0}
+              </Text>
+              <Text style={[styles.statLabel, { color: '#166534' }]}>{t('profile.closedGrievances')}</Text>
             </View>
           </View>
         </View>
 
-        {/* Update Profile Form */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeading}>{locale === 'mr' ? 'माहिती अद्ययावत करा' : 'Update Information'}</Text>
+        {/* Edit Profile Info Form */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeading}>
+            {locale === 'mr' ? 'वैयक्तिक माहिती अद्ययावत करा' : 'Update Profile Name'}
+          </Text>
           
-          <View style={styles.formCard}>
-            <Text style={styles.label}>{t('profile.nameLabel')}</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color="#64748B" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('profile.namePlaceholder')}
-                placeholderTextColor="#94A3B8"
-                value={fullName}
-                onChangeText={setFullName}
-              />
-            </View>
-
-            <CustomButton
-              title={t('profile.saveBtn')}
-              onPress={handleSaveProfile}
-              variant="primary"
-              disabled={saving}
-              icon={saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="save-outline" size={20} color="#FFFFFF" />}
-              style={styles.saveBtn}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>{t('profile.nameLabel')}</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder={t('profile.namePlaceholder')}
+              placeholderTextColor={colors.textMuted}
+              value={fullName}
+              onChangeText={setFullName}
             />
           </View>
+
+          <CustomButton
+            title={t('profile.saveBtn')}
+            onPress={handleSaveProfile}
+            variant="primary"
+            loading={saving}
+            icon={<Ionicons name="save-outline" size={16} color="#FFFFFF" />}
+          />
         </View>
 
-        {/* Logout Section */}
-        <View style={styles.logoutContainer}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out" size={20} color="#EF4444" />
-            <Text style={styles.logoutButtonText}>
-              {locale === 'mr' ? 'माध्यमातून बाहेर पडा' : 'Logout from SafeMaha'}
-            </Text>
-          </TouchableOpacity>
+        {/* Language Selection Quick Switcher */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeading}>
+            {locale === 'mr' ? 'अ‍ॅप भाषा निवडा' : 'App Language'}
+          </Text>
+          <View style={styles.langToggleRow}>
+            <TouchableOpacity
+              style={[styles.langToggleBtn, locale === 'mr' && styles.langToggleBtnActive]}
+              onPress={() => setLocale('mr')}
+            >
+              <Text style={[styles.langToggleText, locale === 'mr' && styles.langToggleTextActive]}>
+                मराठी (Marathi)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.langToggleBtn, locale === 'en' && styles.langToggleBtnActive]}
+              onPress={() => setLocale('en')}
+            >
+              <Text style={[styles.langToggleText, locale === 'en' && styles.langToggleTextActive]}>
+                English
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Logout Button */}
+        <View style={{ marginTop: spacing.md }}>
+          <CustomButton
+            title={locale === 'mr' ? 'बाहेर पडा (Sign Out)' : 'Sign Out from SafeMaha'}
+            onPress={handleLogout}
+            variant="destructive"
+            icon={<Ionicons name="log-out-outline" size={16} color="#FFFFFF" />}
+          />
         </View>
 
       </ScrollView>
@@ -347,7 +379,7 @@ export default function CitizenProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -355,201 +387,217 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   container: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
+  },
+  promptContainer: {
+    flex: 1,
+    padding: spacing.xl,
+    justifyContent: 'center',
+  },
+  authCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  promptIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.infoBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  promptTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  promptDesc: {
+    fontSize: 12.5,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 18,
+  },
+  inputGroup: {
+    marginBottom: spacing.md,
+  },
+  inputLabel: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 6,
+  },
+  phoneInputWrap: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    height: 44,
+    overflow: 'hidden',
+  },
+  prefixBox: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+  },
+  prefixText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  phoneInput: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    fontSize: 14,
+    color: colors.text,
+  },
+  otpInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    height: 44,
+    paddingHorizontal: spacing.md,
+    fontSize: 16,
+    textAlign: 'center',
+    letterSpacing: 4,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  backPhoneText: {
+    color: colors.secondary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   profileHeaderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     alignItems: 'center',
-    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0A3D62',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   avatarContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#0A3D6215',
-    justifyContent: 'center',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.infoBg,
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#0A3D62',
+    color: colors.primary,
   },
   profileName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 6,
+    color: colors.text,
+    marginBottom: 4,
   },
   phoneBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: '#F1F5F9',
-    paddingVertical: 4,
+    paddingVertical: 3,
     paddingHorizontal: 10,
-    borderRadius: 12,
+    borderRadius: borderRadius.full,
   },
   phoneText: {
-    fontSize: 13,
-    color: '#0A3D62',
+    fontSize: 12,
     fontWeight: '600',
-    marginLeft: 6,
+    color: colors.textSecondary,
   },
-  sectionContainer: {
-    marginBottom: 24,
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   sectionHeading: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
   statsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    shadowColor: '#0A3D62',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  statCount: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  formCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingVertical: 12,
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 48,
-    marginBottom: 16,
   },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#0F172A',
-    height: '100%',
-  },
-  saveBtn: {
-    height: 48,
-  },
-  logoutContainer: {
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#FEE2E2',
-    backgroundColor: '#FFFFFF',
-    width: '100%',
-  },
-  logoutButtonText: {
-    color: '#EF4444',
-    fontSize: 15,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  
-  // OTP Prompt screen styles
-  promptContainer: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  promptHeader: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  promptIconWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#0A3D6210',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  promptTitle: {
-    fontSize: 24,
+  statCount: {
+    fontSize: 20,
     fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 10,
+    color: colors.primary,
   },
-  promptDesc: {
-    fontSize: 14,
-    color: '#64748B',
+  statLabel: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: 2,
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 16,
   },
-  promptForm: {
-    width: '100%',
-  },
-  promptInputLabel: {
+  textInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    height: 44,
+    paddingHorizontal: spacing.md,
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0A3D62',
-    marginBottom: 8,
+    color: colors.text,
   },
-  promptBtn: {
-    height: 48,
+  langToggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  langToggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#F8FAFC',
+  },
+  langToggleBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  langToggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  langToggleTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

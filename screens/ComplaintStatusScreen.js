@@ -8,13 +8,15 @@ import {
   SafeAreaView, 
   ScrollView, 
   Image, 
-  StatusBar,
-  ActivityIndicator
+  StatusBar, 
+  ActivityIndicator, 
+  TouchableOpacity 
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import * as storageService from '../services/storageService';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../components/CustomButton';
+import { colors, spacing, borderRadius, shadows } from '../constants/theme';
 
 export default function ComplaintStatusScreen({ route, navigation }) {
   const { t, locale } = useLanguage();
@@ -47,42 +49,42 @@ export default function ComplaintStatusScreen({ route, navigation }) {
     return () => { active = false; };
   }, [complaintId]);
 
-  const getPriorityColor = (priority) => {
+  const getPriorityBadge = (priority) => {
     switch (priority) {
-      case 'Critical': return '#EF4444';
-      case 'High': return '#F97316';
-      case 'Medium': return '#EAB308';
-      case 'Low': return '#22C55E';
-      default: return '#64748B';
+      case 'Critical':
+        return { color: colors.critical, bg: colors.criticalBg, label: locale === 'mr' ? 'अत्यंत गंभीर' : 'Critical' };
+      case 'High':
+        return { color: colors.warning, bg: colors.warningBg, label: locale === 'mr' ? 'उच्च' : 'High' };
+      case 'Medium':
+        return { color: colors.info, bg: colors.infoBg, label: locale === 'mr' ? 'मध्यम' : 'Medium' };
+      case 'Low':
+      default:
+        return { color: colors.success, bg: colors.successBg, label: locale === 'mr' ? 'कमी' : 'Low' };
     }
   };
 
-  const getPriorityBgColor = (priority) => {
-    switch (priority) {
-      case 'Critical': return '#FEF2F2';
-      case 'High': return '#FFF7ED';
-      case 'Medium': return '#FEFCE8';
-      case 'Low': return '#F0FDF4';
-      default: return '#F1F5F9';
-    }
-  };
-
-  const getPriorityLabel = (priority) => {
-    switch (priority) {
-      case 'Critical': return locale === 'mr' ? 'अत्यंत गंभीर' : 'Critical';
-      case 'High': return locale === 'mr' ? 'उच्च' : 'High';
-      case 'Medium': return locale === 'mr' ? 'मध्यम' : 'Medium';
-      case 'Low': return locale === 'mr' ? 'कमी' : 'Low';
-      default: return priority;
+  const formattedDate = (dateVal) => {
+    if (!dateVal) return '—';
+    try {
+      const d = new Date(dateVal);
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return String(dateVal);
     }
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0A3D62" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>
-          {locale === 'mr' ? 'तपशील लोड होत आहेत...' : 'Loading complaint details...'}
+          {locale === 'mr' ? 'तक्रार तपशील लोड होत आहेत...' : 'Retrieving official investigation records...'}
         </Text>
       </View>
     );
@@ -91,26 +93,28 @@ export default function ComplaintStatusScreen({ route, navigation }) {
   if (!complaint) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="close-circle-outline" size={60} color="#EF4444" />
+        <Ionicons name="close-circle-outline" size={56} color={colors.critical} />
         <Text style={styles.errorText}>
-          {locale === 'mr' ? 'तक्रार सापडली नाही!' : 'Complaint not found!'}
+          {locale === 'mr' ? 'तक्रार सापडली नाही!' : 'Grievance Record Unavailable'}
+        </Text>
+        <Text style={styles.errorSub}>
+          {locale === 'mr' ? 'कृपया संदर्भ क्रमांक तपासून पुन्हा प्रयत्न करा.' : 'The requested Reference ID does not exist in the active registry.'}
         </Text>
         <CustomButton
           title={locale === 'mr' ? 'मागे जा' : 'Go Back'}
           onPress={() => navigation.goBack()}
           variant="outline"
-          style={styles.errorBtn}
+          style={{ width: 160, marginTop: 16 }}
         />
       </View>
     );
   }
 
-  // Stepper timeline definition (post-complaint check so complaint object exists)
   const timelineSteps = [
     { 
       key: 'Submitted', 
       label: t('status.timeline.submitted'), 
-      desc: locale === 'mr' ? 'तक्रार यशस्वीरित्या नोंदवली गेली आहे.' : 'Complaint registered successfully and Reference ID generated.' 
+      desc: locale === 'mr' ? 'तक्रार प्रणालीमध्ये नोंदवली गेली आहे.' : 'Grievance registered and reference number generated.' 
     },
     { 
       key: 'Assigned', 
@@ -118,115 +122,107 @@ export default function ComplaintStatusScreen({ route, navigation }) {
       desc: complaint.assignedOfficer 
         ? (locale === 'mr' 
             ? `अन्वेषण अधिकाऱ्याकडे सोपवली: ${complaint.assignedOfficer}` 
-            : `Assigned to Investigation Officer: ${complaint.assignedOfficer}`)
-        : (locale === 'mr' 
-            ? 'तक्रार निवारण अन्न व औषध सुरक्षा अधिकाऱ्याकडे सोपवली आहे.' 
-            : 'FDA Officer has been assigned to inspect and review your grievance.') 
+            : `Assigned to Designated Inspector: ${complaint.assignedOfficer}`)
+        : (locale === 'mr' ? 'संबंधित अन्न व औषध निरीक्षकाची नियुक्ती प्रक्रिया सुरू.' : 'Inspector appointment in progress under regional zone.')
     },
     { 
       key: 'Investigation', 
       label: t('status.timeline.investigation'), 
-      desc: locale === 'mr' ? 'पुराव्यांची तपासणी आणि घटनास्थळाची पाहणी सुरु आहे.' : 'Officer is validating product batch details and conducting spot investigations.' 
+      desc: locale === 'mr' ? 'घटनास्थळाची प्रत्यक्ष तपासणी, पुरावे व नमुने संकलन सुरू.' : 'On-site raid, forensic analysis, and batch testing under process.' 
     },
     { 
       key: 'Action Taken', 
       label: t('status.timeline.actionTaken'), 
-      desc: locale === 'mr' ? 'दोषींवर दंडात्मक कारवाई किंवा कायदेशीर नोटीस जारी केली आहे.' : 'Legal warnings issued, batch recalled, or compliance notices dispatched.' 
+      desc: locale === 'mr' ? 'दोषींवर कायदेशीर नोटीस, माल जप्ती अथवा दंड प्रक्रिया सुरू.' : 'Enforcement action: notice issued, seizures, or recall notices.' 
     },
     { 
       key: 'Closed', 
       label: t('status.timeline.closed'), 
-      desc: locale === 'mr' ? 'तक्रारीचे निराकरण झाले असून प्रकरण बंद केले आहे.' : 'Resolution audit complete. Case closed successfully.' 
+      desc: locale === 'mr' ? 'अंतिम अहवाल तयार करून तक्रार निकाली काढण्यात आली.' : 'Resolution report archived and citizen notified.' 
     }
   ];
 
-  // Determine active index in timeline (initially Submitted is 0)
   const activeIndex = timelineSteps.findIndex((step) => step.key === complaint.status);
-  
-  const getCategoryName = (cat) => {
-    switch (cat) {
-      case 'food': return t('form.categories.food');
-      case 'drug': return t('form.categories.drug');
-      case 'cosmetic': return t('form.categories.cosmetic');
-      case 'other': return t('form.categories.other');
-      default: return cat;
-    }
-  };
-
-  const formattedDate = new Date(complaint.createdAt).toLocaleDateString(
-    locale === 'mr' ? 'mr-IN' : 'en-US',
-    { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-  );
+  const priorityBadge = getPriorityBadge(complaint.priority);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
-        {/* Card 1: ID details */}
-        <View style={styles.topInfoCard}>
-          <Text style={styles.idLabel}>{t('status.idLabel')}</Text>
-          <Text style={styles.complaintIdText}>{complaint.id}</Text>
-          
-          <View style={[styles.priorityBadge, { backgroundColor: getPriorityBgColor(complaint.priority) }]}>
-            <Ionicons name="alert-circle-outline" size={14} color={getPriorityColor(complaint.priority)} />
-            <Text style={[styles.priorityText, { color: getPriorityColor(complaint.priority) }]}>
-              {locale === 'mr' ? 'प्राधान्य:' : 'Priority:'} {getPriorityLabel(complaint.priority)}
-            </Text>
+        {/* Case Header Card */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerTopRow}>
+            <View>
+              <Text style={styles.caseIdText}>{complaint.id}</Text>
+              <Text style={styles.caseDateText}>Lodged on {formattedDate(complaint.createdAt || complaint.created_at)}</Text>
+            </View>
+            <View style={[styles.priorityPill, { backgroundColor: priorityBadge.bg }]}>
+              <Text style={[styles.priorityPillText, { color: priorityBadge.color }]}>
+                {priorityBadge.label} Priority
+              </Text>
+            </View>
           </View>
+          
+          <Text style={styles.caseTitleText}>{complaint.title}</Text>
+        </View>
 
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Ionicons name="calendar-outline" size={14} color="#64748B" />
-              <Text style={styles.metaText}>{formattedDate}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="pricetag-outline" size={14} color="#64748B" />
-              <Text style={styles.metaText}>{getCategoryName(complaint.category)}</Text>
-            </View>
+        {/* Assigned Officer Card */}
+        <View style={styles.officerCard}>
+          <View style={styles.officerIconWrap}>
+            <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.officerLabel}>
+              {locale === 'mr' ? 'अन्वेषण अधिकारी' : 'Designated FDA Inspector'}
+            </Text>
+            <Text style={styles.officerName}>
+              {complaint.assignedOfficer || (locale === 'mr' ? 'नियुक्ती प्रक्रियेत आहे...' : 'Appointment in Progress...')}
+            </Text>
+            <Text style={styles.officerSub}>
+              {complaint.district_name || 'Maharashtra State Jurisdiction'}
+            </Text>
           </View>
         </View>
 
-        {/* Stepper Timeline Card */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>{t('status.statusLabel')}</Text>
-          
-          <View style={styles.timelineContainer}>
+        {/* 5-Stage Stepper Timeline */}
+        <View style={styles.timelineCard}>
+          <Text style={styles.timelineCardTitle}>
+            {locale === 'mr' ? 'तपास प्रगती स्थिती' : 'Investigation Progression'}
+          </Text>
+
+          <View style={styles.stepperContainer}>
             {timelineSteps.map((step, index) => {
-              const isCompleted = index <= activeIndex;
+              const isCompleted = index < activeIndex;
               const isActive = index === activeIndex;
-              const isLast = index === timelineSteps.length - 1;
 
               return (
-                <View key={step.key} style={styles.timelineRow}>
-                  {/* Left Column: Circle & Line */}
-                  <View style={styles.leftColumn}>
+                <View key={step.key} style={styles.stepItem}>
+                  <View style={styles.stepLeftColumn}>
                     <View style={[
-                      styles.stepCircle,
-                      isCompleted ? styles.circleCompleted : styles.circlePending,
-                      isActive && styles.circleActive
+                      styles.stepDot,
+                      isCompleted && styles.stepDotCompleted,
+                      isActive && styles.stepDotActive,
                     ]}>
                       {isCompleted ? (
-                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                       ) : (
-                        <View style={styles.pendingDot} />
+                        <Text style={[styles.stepDotNumber, isActive && styles.stepDotNumberActive]}>
+                          {index + 1}
+                        </Text>
                       )}
                     </View>
-                    {!isLast && (
+                    {index < timelineSteps.length - 1 && (
                       <View style={[
-                        styles.connectorLine,
-                        index < activeIndex ? styles.lineCompleted : styles.linePending
+                        styles.stepLine,
+                        isCompleted && styles.stepLineCompleted,
                       ]} />
                     )}
                   </View>
 
-                  {/* Right Column: Status text details */}
-                  <View style={styles.rightColumn}>
-                    <Text style={[
-                      styles.stepLabel,
-                      isCompleted ? styles.labelCompleted : styles.labelPending,
-                      isActive && styles.labelActive
-                    ]}>
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepTitle, isActive && styles.stepTitleActive]}>
                       {step.label}
                     </Text>
                     <Text style={styles.stepDesc}>{step.desc}</Text>
@@ -237,50 +233,26 @@ export default function ComplaintStatusScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Details Card */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>{locale === 'mr' ? 'तक्रारीचा तपशील' : 'Grievance Description'}</Text>
-          <Text style={styles.complaintTitleText}>{complaint.title}</Text>
-          <Text style={styles.complaintDescText}>{complaint.description}</Text>
+        {/* Official Officer Inspection Notes */}
+        {complaint.notes && complaint.notes.length > 0 && (
+          <View style={styles.notesCard}>
+            <Text style={styles.timelineCardTitle}>
+              {locale === 'mr' ? 'अन्वेषण नोंदी व टिप्पणी' : 'Official Inspection Remarks'}
+            </Text>
 
-          {/* Evidence Thumbnails */}
-          {complaint.evidence && complaint.evidence.length > 0 && (
-            <View style={styles.evidenceContainer}>
-              <Text style={styles.subLabel}>{t('status.evidenceLabel')}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.evidenceRow}>
-                {complaint.evidence.map((uri, index) => (
-                  <Image key={index} source={{ uri }} style={styles.evidenceThumbnail} />
-                ))}
-              </ScrollView>
+            <View style={styles.notesList}>
+              {complaint.notes.map((note) => (
+                <View key={note.id} style={styles.noteItem}>
+                  <View style={styles.noteHeader}>
+                    <Text style={styles.noteAuthor}>{note.author}</Text>
+                    <Text style={styles.noteTime}>{formattedDate(note.timestamp)}</Text>
+                  </View>
+                  <Text style={styles.noteComment}>{note.comment}</Text>
+                </View>
+              ))}
             </View>
-          )}
-
-          {/* Location details */}
-          {complaint.location && (
-            <View style={styles.locationContainer}>
-              <Text style={styles.subLabel}>{t('status.locationLabel')}</Text>
-              <View style={styles.locationContent}>
-                <Ionicons name="pin" size={18} color="#EF4444" style={styles.pinIcon} />
-                <Text style={styles.addressText}>{complaint.location.address}</Text>
-              </View>
-              {complaint.location.latitude && (
-                <Text style={styles.gpsCoordsText}>
-                  GPS: {complaint.location.latitude.toFixed(5)}, {complaint.location.longitude.toFixed(5)}
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Contact Strip */}
-        <View style={styles.contactCard}>
-          <Ionicons name="information-circle" size={22} color="#0A3D62" />
-          <Text style={styles.contactText}>
-            {locale === 'mr'
-              ? 'पुढील चौकशीसाठी, कृपया आमच्या हेल्पलाईनशी किंवा अन्न व औषध प्रशासनाशी थेट संपर्क साधा.'
-              : 'For further queries, please reach out to the Maharashtra FDA helpdesk.'}
-          </Text>
-        </View>
+          </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>
@@ -290,280 +262,235 @@ export default function ComplaintStatusScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
+  },
+  scrollContainer: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
+    padding: spacing.xl,
   },
   loadingText: {
-    marginTop: 12,
-    color: '#0A3D62',
-    fontWeight: '600',
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.xl,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#0F172A',
-    marginTop: 16,
-    marginBottom: 24,
+    color: colors.text,
+    marginTop: spacing.md,
   },
-  errorBtn: {
-    width: 150,
+  errorSub: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
   },
-  scrollContainer: {
-    padding: 16,
-    paddingBottom: 30,
-  },
-  topInfoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 16,
+  headerCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 2,
-    alignItems: 'center',
+    borderColor: colors.border,
+    ...shadows.sm,
   },
-  idLabel: {
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  caseIdText: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  caseDateText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  priorityPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+  },
+  priorityPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#64748B',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 6,
   },
-  complaintIdText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 14,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    borderTopWidth: 1.5,
-    borderColor: '#F1F5F9',
-    paddingTop: 12,
-    width: '100%',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 12,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#64748B',
+  caseTitleText: {
+    fontSize: 14.5,
     fontWeight: '600',
-    marginLeft: 6,
+    color: colors.text,
+    marginTop: spacing.sm,
   },
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
+  officerCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0A3D62',
-    marginBottom: 16,
-    borderBottomWidth: 1.5,
-    borderColor: '#F1F5F9',
-    paddingBottom: 8,
-  },
-  timelineContainer: {
-    paddingLeft: 6,
-  },
-  timelineRow: {
+    borderColor: colors.border,
     flexDirection: 'row',
-    minHeight: 80,
-  },
-  leftColumn: {
     alignItems: 'center',
-    marginRight: 16,
+    gap: spacing.md,
+    ...shadows.sm,
   },
-  stepCircle: {
+  officerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.infoBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  officerLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+  },
+  officerName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 1,
+  },
+  officerSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  timelineCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  timelineCardTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  stepperContainer: {
+    paddingLeft: 4,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  stepLeftColumn: {
+    alignItems: 'center',
+    width: 26,
+  },
+  stepDot: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  circleCompleted: {
-    backgroundColor: '#38ADA9', // Completed step Teal
-  },
-  circlePending: {
     backgroundColor: '#F1F5F9',
     borderWidth: 2,
     borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
   },
-  circleActive: {
-    borderColor: '#0A3D62',
-    borderWidth: 2,
-    backgroundColor: '#0A3D62',
-    shadowColor: '#0A3D62',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+  stepDotCompleted: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
   },
-  pendingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#CBD5E1',
+  stepDotActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  connectorLine: {
+  stepDotNumber: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  stepDotNumberActive: {
+    color: '#FFFFFF',
+  },
+  stepLine: {
     width: 2,
     flex: 1,
-    marginVertical: 4,
-  },
-  lineCompleted: {
-    backgroundColor: '#38ADA9',
-  },
-  linePending: {
     backgroundColor: '#E2E8F0',
+    minHeight: 28,
   },
-  rightColumn: {
+  stepLineCompleted: {
+    backgroundColor: colors.success,
+  },
+  stepContent: {
     flex: 1,
-    paddingBottom: 16,
+    paddingBottom: spacing.lg,
   },
-  stepLabel: {
-    fontSize: 15,
+  stepTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  stepTitleActive: {
+    color: colors.primary,
     fontWeight: '700',
-    marginBottom: 4,
-  },
-  labelCompleted: {
-    color: '#38ADA9',
-  },
-  labelPending: {
-    color: '#64748B',
-  },
-  labelActive: {
-    color: '#0A3D62',
-    fontSize: 16,
   },
   stepDesc: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 18,
+    fontSize: 11.5,
+    color: colors.textSecondary,
+    lineHeight: 16,
+    marginTop: 2,
   },
-  complaintTitleText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
+  notesCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
-  complaintDescText: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 22,
-    marginBottom: 20,
+  notesList: {
+    gap: 10,
+  },
+  noteItem: {
     backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
-  subLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  evidenceContainer: {
-    marginBottom: 20,
-  },
-  evidenceRow: {
+  noteHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
-  evidenceThumbnail: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 8,
-    resizeMode: 'cover',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  locationContainer: {
-    marginTop: 4,
-  },
-  locationContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  pinIcon: {
-    marginRight: 6,
-    marginTop: 1,
-  },
-  addressText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0F172A',
-    flex: 1,
-    lineHeight: 20,
-  },
-  gpsCoordsText: {
-    fontSize: 12,
-    color: '#38ADA9',
-    fontWeight: '600',
-    marginLeft: 24,
-  },
-  contactCard: {
-    flexDirection: 'row',
-    backgroundColor: '#EBF3F9',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D0E2EF',
-  },
-  contactText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#0A3D62',
-    marginLeft: 10,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  priorityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 14,
-  },
-  priorityText: {
+  noteAuthor: {
     fontSize: 12,
     fontWeight: '700',
-    marginLeft: 6,
+    color: colors.primary,
+  },
+  noteTime: {
+    fontSize: 10.5,
+    color: colors.textMuted,
+  },
+  noteComment: {
+    fontSize: 12,
+    color: colors.text,
+    lineHeight: 17,
   },
 });
