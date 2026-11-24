@@ -4,12 +4,11 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-const BACKEND_PORT = 8000;
+// Production backend: https://safemaha.onrender.com
+// Set EXPO_PUBLIC_API_URL in eas.json to override for different environments
+const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://safemaha.onrender.com';
 
-const getBaseUrl = () => {
-  const host = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-  return `http://${host}:${BACKEND_PORT}`;
-};
+const getBaseUrl = () => PRODUCTION_API_URL;
 
 export const BASE_URL = getBaseUrl();
 

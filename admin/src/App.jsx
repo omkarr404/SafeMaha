@@ -7,7 +7,7 @@ import ComplaintDetails from './components/ComplaintDetails';
 import OfficerManager from './components/OfficerManager';
 import SystemAnalytics from './components/SystemAnalytics';
 
-const MOCK_SERVER_URL = 'http://localhost:8000';
+const MOCK_SERVER_URL = import.meta.env.VITE_API_URL || 'https://safemaha.onrender.com';
 
 const INITIAL_MOCK_COMPLAINTS = [
   {

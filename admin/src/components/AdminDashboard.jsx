@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './AdminDashboard.css';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://safemaha.onrender.com';
+
 export default function AdminDashboard({ complaints = [], onSelectComplaint, onRefresh }) {
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,7 +29,7 @@ export default function AdminDashboard({ complaints = [], onSelectComplaint, onR
   // Fetch Maharashtra districts from backend API
   useEffect(() => {
     setLoadingDistricts(true);
-    fetch('http://localhost:8000/api/districts')
+    fetch(`${API_BASE}/api/districts`)
       .then((res) => {
         if (!res.ok) throw new Error('Network response not ok');
         return res.json();
@@ -38,7 +40,7 @@ export default function AdminDashboard({ complaints = [], onSelectComplaint, onR
 
     // Fetch Officers Directory from backend API
     const token = localStorage.getItem('@safemaha_admin_token');
-    fetch('http://localhost:8000/api/admin/officers/', {
+    fetch(`${API_BASE}/api/admin/officers/`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((res) => {
@@ -57,7 +59,7 @@ export default function AdminDashboard({ complaints = [], onSelectComplaint, onR
     } else {
       const selected = districts.find((d) => d.name === districtFilter);
       if (selected) {
-        fetch(`http://localhost:8000/api/districts/${selected.id}/talukas`)
+        fetch(`${API_BASE}/api/districts/${selected.id}/talukas`)
           .then((res) => res.json())
           .then((data) => setTalukas(Array.isArray(data) ? data : []))
           .catch((err) => console.error('Error fetching talukas:', err));

@@ -4,13 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 const COMPLAINTS_KEY = '@safemaha_complaints';
-const MOCK_SERVER_PORT = 8000;
-
-// Android emulator maps the host machine loopback to 10.0.2.2
-const getApiUrl = () => {
-  const host = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-  return `http://${host}:${MOCK_SERVER_PORT}`;
-};
+// Production backend URL
+const getApiUrl = () => 'https://safemaha.onrender.com';
 
 export const API_URL = getApiUrl();
 

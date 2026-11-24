@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './ComplaintDetails.css';
 
-const MOCK_SERVER_URL = 'http://localhost:8000';
+const MOCK_SERVER_URL = import.meta.env.VITE_API_URL || 'https://safemaha.onrender.com';
 
 export default function ComplaintDetails({ complaintId, complaints, onBack, onUpdateComplaint }) {
   const complaint = complaints.find((c) => c.id === complaintId);

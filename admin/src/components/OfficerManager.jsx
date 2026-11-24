@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-const MOCK_SERVER_URL = 'http://localhost:8000';
+const MOCK_SERVER_URL = import.meta.env.VITE_API_URL || 'https://safemaha.onrender.com';
 
 export default function OfficerManager() {
   const [officers, setOfficers] = useState([]);

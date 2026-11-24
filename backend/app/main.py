@@ -34,17 +34,23 @@ app = FastAPI(
 
 # CORS Configuration
 # Allow Expo local developer connections and React admin dashboard connections
+# Set CORS_ORIGINS env var in production to add your deployed URLs (comma-separated)
+# e.g. CORS_ORIGINS=https://safemaha-admin.vercel.app,https://your-custom-domain.com
+import os as _os
+_extra_origins = [o.strip() for o in _os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+
 origins = [
-    "http://localhost:5173", # React admin dev port
+    "http://localhost:5173",        # React admin dev (Vite)
     "http://localhost:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "http://localhost:19000", # Expo default Metro port
-    "http://localhost:19006", # Expo web port
-    "http://localhost:8081",  # Expo new standard bundler port
-    "*"                       # Accept wildcard for easier local/WiFi device tests
+    "http://localhost:19000",       # Expo Metro
+    "http://localhost:19006",       # Expo web
+    "http://localhost:8081",        # Expo bundler
+    *_extra_origins,                # Production URLs from environment variable
+    "*"                             # Wildcard for mobile device WiFi access
 ]
 
 app.add_middleware(

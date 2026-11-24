@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://safemaha.onrender.com';
+
 export default function AdminLogin({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +24,7 @@ export default function AdminLogin({ onLoginSuccess }) {
 
     setLoading(true);
 
-    fetch('http://localhost:8000/api/admin/login', {
+    fetch(`${API_BASE}/api/admin/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
